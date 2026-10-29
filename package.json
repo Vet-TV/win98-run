@@ -1,0 +1,10 @@
+{
+  "name": "win98-run",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Windows 98-style desktop simulation for the browser. Not affiliated with Microsoft.",
+  "scripts": {
+    "start": "node server.mjs"
+  }
+}

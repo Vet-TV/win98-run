@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DOS Program</title>
+<link rel="stylesheet" href="https://v8.js-dos.com/latest/js-dos.css">
+<style>
+  html, body { height: 100%; margin: 0; background: #000; overflow: hidden; }
+  #dos { width: 100%; height: 100%; }
+  #msg { color: #c0c0c0; font-family: Tahoma, Verdana, sans-serif; font-size: 14px; padding: 18px; line-height: 1.5; }
+  #msg b { color: #fff; }
+</style>
+</head>
+<body>
+<div id="dos"><div id="msg">Loading DOS…</div></div>
+<script src="https://v8.js-dos.com/latest/js-dos.js"></script>
+<script>
+(function () {
+  var msg = document.getElementById('msg');
+  var params = new URLSearchParams(location.search);
+  var demo = params.get('demo');
+  var id = params.get('id');
+  function fail(text) { msg.innerHTML = '<b>DOS could not start.</b><br><br>' + text; }
+  if (typeof Dos !== 'function') { fail('The js-dos runtime did not load. This feature needs an internet connection.'); return; }
+
+  function start(url, saveKey) {
+    msg.remove();
+    var props = Dos(document.getElementById('dos'), {
+      url: url,
+      autoStart: true,
+      backend: 'dosbox',
+      backendLocked: true,
+      theme: 'dark',
+      renderAspect: 'Fit',
+      imageRendering: 'pixelated',
+      fsChanges: { local: true, urlToKey: function () { return Promise.resolve(saveKey); } },
+      onEvent: function (event) { if (event === 'emu-ready') { try { props.setNoCloud(true); } catch (e) {} } }
+    });
+    window.addEventListener('beforeunload', function () { try { props.save(); } catch (e) {} });
+  }
+
+  if (demo) { start('https://v8.js-dos.com/bundles/digger.jsdos', 'win98-demo-digger'); return; }
+  if (!id) { fail('No program was selected.'); return; }
+
+  var req = indexedDB.open('win98-run-db-v1', 1);
+  req.onupgradeneeded = function () { req.result.createObjectStore('programs', { keyPath: 'id' }); };
+  req.onerror = function () { fail('Could not open the local program library.'); };
+  req.onsuccess = function () {
+    var get = req.result.transaction('programs', 'readonly').objectStore('programs').get(id);
+    get.onerror = function () { fail('Could not read that program from local storage.'); };
+    get.onsuccess = function () {
+      var prog = get.result;
+      if (!prog || !prog.bundle) { fail('That program is no longer in this browser. Import it again from DOS Programs.'); return; }
+      start(URL.createObjectURL(prog.bundle), 'win98-prog-' + prog.id);
+    };
+  };
+})();
+</script>
+</body>
+</html>

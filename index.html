@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Windows 98 — win98-run</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%23008080'/><rect x='2' y='2' width='5' height='5' fill='%23ff3b30'/><rect x='9' y='2' width='5' height='5' fill='%2334c759'/><rect x='2' y='9' width='5' height='5' fill='%23007aff'/><rect x='9' y='9' width='5' height='5' fill='%23ffcc00'/></svg>">
+</head>
+<body>
+  <!-- Boot sequence -->
+  <div id="boot" role="button" aria-label="Skip boot sequence" title="Click to skip">
+    <div id="bios">
+      <pre id="bios-text"></pre>
+      <div class="bios-footer">Press DEL to enter SETUP &nbsp;•&nbsp; Click anywhere to skip</div>
+    </div>
+    <div id="splash" class="hidden">
+      <div class="splash-logo">
+        <div class="flag" aria-hidden="true"><span class="f r"></span><span class="f g"></span><span class="f b"></span><span class="f y"></span></div>
+        <div class="splash-word">Microsoft<span class="reg">®</span></div>
+        <div class="splash-os">Windows<span class="os-num">98</span></div>
+        <div class="splash-edition">Second Edition — browser simulation</div>
+      </div>
+      <div class="progress-track"><div id="boot-progress"></div></div>
+      <div class="splash-hint">Starting Windows 98…</div>
+    </div>
+  </div>
+
+  <!-- Desktop -->
+  <main id="desktop" class="hidden" aria-label="Windows 98 desktop">
+    <div id="icons"></div>
+    <div id="windows"></div>
+
+    <div id="context-menu" class="menu hidden" role="menu">
+      <button data-action="refresh">Refresh</button>
+      <div class="sep"></div>
+      <button data-action="new-text">New Text Document</button>
+      <button data-action="display">Properties</button>
+    </div>
+
+    <div id="start-menu" class="hidden" role="menu" aria-label="Start menu">
+      <div class="start-rail"><span>Windows<b>98</b></span></div>
+      <div class="start-items">
+        <button data-app="explorer" data-path="My Computer"><span class="mi">▣</span> My Computer</button>
+        <button data-app="ie"><span class="mi">◎</span> Internet Explorer</button>
+        <div class="sep"></div>
+        <button data-app="notepad"><span class="mi">▤</span> Notepad</button>
+        <button data-app="paint"><span class="mi">✿</span> Paint</button>
+        <button data-app="minesweeper"><span class="mi">✸</span> Minesweeper</button>
+        <button data-app="calculator"><span class="mi">▦</span> Calculator</button>
+        <button data-app="programs"><span class="mi">▶</span> DOS Programs…</button>
+        <button data-action="import-program"><span class="mi">⬇</span> Run Program… (import DOS)</button>
+        <div class="sep"></div>
+        <button data-app="display"><span class="mi">⚙</span> Display Properties</button>
+        <button data-app="system"><span class="mi">ℹ</span> System Properties</button>
+        <div class="sep"></div>
+        <button data-action="run"><span class="mi">▸</span> Run…</button>
+        <button data-action="shutdown"><span class="mi">⏻</span> Shut Down…</button>
+      </div>
+    </div>
+
+    <footer id="taskbar">
+      <button id="start-btn" aria-haspopup="menu"><span class="flag mini" aria-hidden="true"><span class="f r"></span><span class="f g"></span><span class="f b"></span><span class="f y"></span></span><b>Start</b></button>
+      <div class="task-div"></div>
+      <div id="task-buttons"></div>
+      <button id="show-desktop" title="Show Desktop">▭</button>
+      <div id="tray"><span class="tray-icon" title="Volume">♪</span><span id="clock">--:--</span></div>
+    </footer>
+  </main>
+
+  <div id="shutdown" class="hidden">
+    <p>It's now safe to turn off<br>your computer.</p>
+    <button id="power-on">Power On</button>
+  </div>
+
+<input type="file" id="program-input" accept=".zip,.jsdos,.exe,.com,.bat" class="hidden" aria-label="Import a DOS program">
+<script src="app.js"></script>
+</body>
+</html>

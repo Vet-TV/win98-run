@@ -1,0 +1,113 @@
+:root{
+  --face:#c0c0c0; --face-light:#dfdfdf; --white:#fff; --black:#000;
+  --dark:#404040; --teal:#008080; --navy:#000080; --navy2:#1084d0;
+  --title-grad:linear-gradient(90deg,var(--navy),var(--navy2));
+  --title-inactive:linear-gradient(90deg,#808080,#b5b5b5);
+  --font:"Tahoma","Segoe UI",Verdana,sans-serif; --mono:"Consolas","Courier New",monospace;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+html,body{height:100%; margin:0; overflow:hidden; background:#000; font-family:var(--font); font-size:13px}
+button{font-family:var(--font); font-size:13px; color:#000}
+.hidden{display:none !important}
+
+/* Raised / sunken 98 bevels */
+.raised{background:var(--face); border:1px solid; border-color:var(--white) var(--black) var(--black) var(--white); box-shadow:inset -1px -1px #808080, inset 1px 1px var(--face-light)}
+.sunken{background:var(--white); border:1px solid; border-color:#808080 var(--white) var(--white) #808080; box-shadow:inset -1px -1px var(--face-light), inset 1px 1px var(--black)}
+.btn98{background:var(--face); border:1px solid; border-color:var(--white) var(--black) var(--black) var(--white); box-shadow:inset -1px -1px #808080, inset 1px 1px var(--face-light); padding:3px 12px; cursor:pointer}
+.btn98:active{border-color:var(--black) var(--white) var(--white) var(--black); box-shadow:inset -1px -1px var(--face-light), inset 1px 1px #808080}
+
+/* Boot */
+#boot{position:fixed; inset:0; background:#000; color:#c0c0c0; z-index:1000; cursor:pointer}
+#bios{padding:28px 36px; font-family:var(--mono); font-size:15px; line-height:1.5}
+#bios-text{margin:0; white-space:pre-wrap}
+.bios-footer{position:absolute; bottom:26px; left:36px; color:#808080}
+#splash{position:absolute; inset:0; background:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; cursor:pointer}
+.flag{display:grid; grid-template-columns:1fr 1fr; gap:3px; width:74px; height:56px; transform:skewY(-4deg)}
+.flag .f{display:block}.flag .r{background:#ff3b30}.flag .g{background:#34c759}.flag .b{background:#007aff}.flag .y{background:#ffcc00}
+.flag.mini{width:18px; height:14px; gap:1px; vertical-align:-2px; margin-right:5px}
+.splash-logo{text-align:center; color:#000}
+.splash-word{font-size:24px; letter-spacing:.5px; margin-top:16px}.splash-word .reg{font-size:11px; vertical-align:super}
+.splash-os{font-size:64px; font-weight:300; line-height:1}.splash-os .os-num{font-weight:700; color:#000}
+.splash-edition{color:#666; margin-top:6px}
+.progress-track{width:min(420px,70vw); height:16px; border:1px solid #808080; padding:2px; background:#fff}
+#boot-progress{height:100%; width:0%; background:repeating-linear-gradient(90deg,var(--navy) 0 12px,transparent 12px 15px); transition:width .15s linear}
+.splash-hint{color:#444}
+
+/* Desktop */
+#desktop{position:fixed; inset:0; background:var(--teal); background-size:cover; background-position:center; overflow:hidden; user-select:none}
+#icons{position:absolute; inset:0 0 34px 0; display:flex; flex-direction:column; flex-wrap:wrap; align-content:flex-start; gap:6px; padding:10px}
+.dicon{width:88px; padding:6px 2px 4px; text-align:center; color:#fff; cursor:pointer; border:1px dotted transparent; background:none}
+.dicon .dic{font-size:30px; line-height:36px; display:block; filter:drop-shadow(1px 1px 1px rgba(0,0,0,.5))}
+.dicon .dl{display:block; margin-top:2px; text-shadow:1px 1px 1px #000; word-break:break-word}
+.dicon.selected{background:rgba(0,0,128,.35); border-color:rgba(255,255,255,.7)}
+.dicon.selected .dl{background:var(--navy)}
+
+/* Windows */
+.window{position:absolute; min-width:220px; min-height:120px; display:flex; flex-direction:column; padding:3px; background:var(--face); border:1px solid; border-color:var(--white) var(--black) var(--black) var(--white); box-shadow:inset -1px -1px #808080, inset 1px 1px var(--face-light), 2px 2px 8px rgba(0,0,0,.35)}
+.titlebar{height:22px; display:flex; align-items:center; gap:6px; padding:0 2px 0 6px; background:var(--title-inactive); color:#fff; font-weight:700; cursor:move; touch-action:none}
+.window.active .titlebar{background:var(--title-grad)}
+.titlebar .ticon{font-size:13px}.titlebar .ttitle{flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.tbtns{display:flex; gap:2px}
+.tbtn{width:18px; height:16px; line-height:12px; padding:0; font-size:11px; font-weight:700; background:var(--face); border:1px solid; border-color:var(--white) var(--black) var(--black) var(--white); box-shadow:inset -1px -1px #808080, inset 1px 1px var(--face-light); cursor:pointer}
+.tbtn:active{border-color:var(--black) var(--white) var(--white) var(--black)}
+.menubar{display:flex; gap:2px; padding:3px 4px}
+.menubar span{padding:1px 6px; cursor:default}.menubar span:hover{background:var(--navy); color:#fff}
+.winbody{flex:1; overflow:auto; margin:2px; background:var(--white); border:1px solid; border-color:#808080 var(--white) var(--white) #808080; box-shadow:inset -1px -1px var(--face-light), inset 1px 1px var(--black)}
+.winbody.padded{padding:10px}.winbody.facematch{background:var(--face); border:none; box-shadow:none}
+.statusbar{display:flex; gap:2px; padding:2px}
+.statusbar span{flex:1; padding:2px 6px; border:1px solid; border-color:#808080 var(--white) var(--white) #808080}
+.resize{position:absolute; right:0; bottom:0; width:16px; height:16px; cursor:nwse-resize; touch-action:none; background:linear-gradient(135deg,transparent 50%,#808080 50%,#808080 55%,transparent 55%,transparent 65%,#808080 65%,#808080 70%,transparent 70%)}
+.window.maximized{inset:0 !important; width:auto !important; height:auto !important}
+.window.minimized{display:none}
+
+/* Taskbar + Start */
+#taskbar{position:absolute; left:0; right:0; bottom:0; height:34px; display:flex; align-items:center; gap:4px; padding:3px; background:var(--face); border-top:1px solid var(--white); box-shadow:0 -1px #dfdfdf; z-index:900}
+#start-btn{display:flex; align-items:center; height:26px; padding:0 10px 0 6px; font-weight:700; background:var(--face); border:1px solid; border-color:var(--white) var(--black) var(--black) var(--white); box-shadow:inset -1px -1px #808080, inset 1px 1px var(--face-light); cursor:pointer}
+#start-btn.pressed{border-color:var(--black) var(--white) var(--white) var(--black); box-shadow:inset -1px -1px var(--face-light), inset 1px 1px #808080}
+.task-div{width:1px; height:24px; background:#808080; box-shadow:1px 0 var(--white)}
+#task-buttons{flex:1; display:flex; gap:4px; overflow:hidden}
+.task-btn{height:26px; min-width:130px; max-width:190px; text-align:left; padding:0 8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; background:var(--face); border:1px solid; border-color:var(--white) var(--black) var(--black) var(--white); box-shadow:inset -1px -1px #808080, inset 1px 1px var(--face-light); cursor:pointer}
+.task-btn.active{border-color:var(--black) var(--white) var(--white) var(--black); background:repeating-conic-gradient(#fff 0% 25%, var(--face-light) 0% 50%) 0 0/4px 4px; font-weight:700}
+#show-desktop{height:26px; width:28px; background:var(--face); border:1px solid; border-color:#808080 var(--white) var(--white) #808080; cursor:pointer}
+#tray{display:flex; align-items:center; gap:8px; height:26px; padding:0 10px; border:1px solid; border-color:#808080 var(--white) var(--white) #808080}
+#start-menu{position:absolute; left:3px; bottom:36px; z-index:950; display:flex; min-width:230px; padding:3px; background:var(--face); border:1px solid; border-color:var(--white) var(--black) var(--black) var(--white); box-shadow:inset -1px -1px #808080, inset 1px 1px var(--face-light)}
+.start-rail{width:24px; background:linear-gradient(0deg,var(--navy),var(--navy2)); color:#c0d8f0; display:flex; align-items:flex-end; padding:6px 0}
+.start-rail span{writing-mode:vertical-rl; transform:rotate(180deg); font-size:16px; letter-spacing:.5px}.start-rail b{color:#fff}
+.start-items{display:flex; flex-direction:column; flex:1}
+.start-items button{display:flex; gap:9px; align-items:center; text-align:left; padding:6px 10px; background:none; border:none; cursor:pointer}
+.start-items button:hover{background:var(--navy); color:#fff}
+.start-items .sep,.menu .sep{height:1px; margin:4px 2px; background:#808080; box-shadow:0 1px var(--white)}
+.menu{position:absolute; z-index:960; min-width:180px; padding:3px; display:flex; flex-direction:column; background:var(--face); border:1px solid; border-color:var(--white) var(--black) var(--black) var(--white); box-shadow:inset -1px -1px #808080, inset 1px 1px var(--face-light)}
+.menu button{text-align:left; padding:5px 10px; background:none; border:none; cursor:pointer}
+.menu button:hover{background:var(--navy); color:#fff}
+
+/* Apps */
+textarea.notepad{width:100%; height:100%; border:none; resize:none; outline:none; font-family:var(--mono); font-size:14px; padding:4px}
+.explorer-grid{display:flex; flex-wrap:wrap; gap:8px; padding:10px; align-content:flex-start}
+.file-item{width:92px; text-align:center; padding:6px 2px; cursor:pointer; border:1px dotted transparent; background:none}
+.file-item:hover{border-color:#808080}.file-item .fi{font-size:28px; display:block}.file-item span{word-break:break-word}
+.paint-wrap{display:flex; flex-direction:column; height:100%; background:var(--face)}
+.paint-tools{display:flex; gap:6px; align-items:center; padding:6px; flex-wrap:wrap}
+.paint-tools input[type=color]{width:34px; height:26px; padding:0}
+#paint-canvas{flex:1; margin:0 6px 6px; background:#fff; cursor:crosshair; touch-action:none; border:1px solid #808080}
+.calc{display:grid; grid-template-columns:repeat(4,1fr); gap:4px; padding:8px; background:var(--face); height:100%}
+.calc-display{grid-column:1/-1; text-align:right; font-family:var(--mono); font-size:22px; padding:8px; background:#fff; border:1px solid; border-color:#808080 var(--white) var(--white) #808080; overflow:hidden}
+.mine-wrap{padding:10px; background:var(--face); text-align:center; height:100%}
+.mine-grid{display:grid; grid-template-columns:repeat(9,28px); gap:0; justify-content:center; margin-top:10px}
+.mine-cell{width:28px; height:28px; font-weight:700; padding:0; background:var(--face); border:1px solid; border-color:var(--white) var(--black) var(--black) var(--white)}
+.mine-cell.open{border:1px solid #808080; background:#c8c8c8}.mine-cell.boom{background:#f00}
+.ie-bar{display:flex; gap:6px; padding:6px; background:var(--face)}.ie-bar input{flex:1; padding:4px 6px; border:1px solid #808080}
+.swatches{display:flex; gap:8px; flex-wrap:wrap; margin:10px 0}
+.swatch{width:56px; height:40px; cursor:pointer; border:2px solid #808080}.swatch.sel{outline:2px solid var(--navy)}
+.field{margin:8px 0}.field label{display:block; margin-bottom:3px}.field input[type=text]{width:100%; padding:4px 6px}
+.sys-table{width:100%; border-collapse:collapse}.sys-table td{padding:4px 6px; vertical-align:top}.sys-table td:first-child{font-weight:700; width:42%}
+.dos-frame{width:100%; height:100%; border:none; background:#000; display:block}
+.prog-list{display:flex; flex-direction:column; gap:6px; padding:10px}
+.prog-row{display:flex; align-items:center; gap:8px; padding:6px 8px; background:#fff; border:1px solid #808080}
+.prog-row .pname{flex:1; font-weight:700; word-break:break-all}
+.prog-row .psize{color:#444; white-space:nowrap}
+
+/* Shutdown */
+#shutdown{position:fixed; inset:0; background:#000; color:#ff8000; z-index:1100; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:22px; font-family:var(--mono); font-size:22px; text-align:center}
+#shutdown button{background:#000; color:#ff8000; border:1px solid #ff8000; padding:8px 22px; cursor:pointer; font-family:var(--mono)}
+@media (max-width:640px){ .dicon{width:74px} .task-btn{min-width:84px} #bios{font-size:12px; padding:18px} .splash-os{font-size:44px} }
