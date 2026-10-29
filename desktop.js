@@ -350,7 +350,7 @@ async function importProgramFile(file, { run = true } = {}) {
   if (file.size > 200 * 1024 * 1024 && !confirm(`"${file.name}" is ${(file.size / 1048576).toFixed(0)} MB. Large programs may be slow and use a lot of browser storage. Continue?`)) return null;
   const { bundle, exe } = await makeDosBundle(file);
   const name = (prompt('Program name:', file.name.replace(/\.(zip|jsdos)$/i, '')) || file.name).trim();
-  const prog = { id: 'p' + Date.now().toString(36), name, exe, size: bundle.size, addedAt: Date.now(), bundle };
+  const prog = { id: 'p' + Date.now().toString(36), name, exe, size: bundle.size, addedAt: Date.now(), bundle, settings: { backend: 'dosbox', cycles: 'auto' } };
   await progPut(prog);
   if (typeof refreshProgramsList === 'function') { try { await refreshProgramsList(); } catch { /* programs window closed */ } }
   if (run) openDOSPlayer(prog);
@@ -364,7 +364,33 @@ function openDOSPlayer(prog) {
   wrap.innerHTML = `<iframe class="dos-frame" title="${escapeHtml(prog.name)}" src="dos-player.html?id=${encodeURIComponent(prog.id)}" allow="autoplay; fullscreen; gamepad"></iframe>`;
   const win = createWindow({ title: `${prog.name} — DOS`, icon: '▶', width: 700, height: 520, body: wrap, menu: ['File', 'View', 'Help'] });
   win.body.style.background = '#000';
-  win.el.querySelector('.statusbar span').textContent = `${prog.exe} • Files stay on this device • Close the window to stop`;
+  const bar = win.el.querySelector('.statusbar span');
+  bar.innerHTML = `<button class="btn98" id="dos-fs">Fullscreen</button> ${escapeHtml(prog.exe)} • ${escapeHtml(prog.settings?.backend || 'dosbox')} / cycles ${escapeHtml(prog.settings?.cycles || 'auto')} • Close the window to stop`;
+  $('#dos-fs', bar).onclick = () => { const f = $('iframe', wrap); if (f.requestFullscreen) f.requestFullscreen(); };
+}
+
+function openProgramSettings(prog, onSaved) {
+  const s = prog.settings || { backend: 'dosbox', cycles: 'auto' };
+  const wrap = div(`<div class="field"><label>Emulator backend</label>
+      <select id="set-backend" style="width:100%;padding:4px"><option value="dosbox" ${s.backend === 'dosbox' ? 'selected' : ''}>DOSBox (compatible)</option><option value="dosboxX" ${s.backend === 'dosboxX' ? 'selected' : ''}>DOSBox-X (more features, slower)</option></select></div>
+    <div class="field"><label>CPU cycles (speed)</label>
+      <select id="set-cycles" style="width:100%;padding:4px">${['auto', '3000', '10000', '30000', 'max'].map(c => `<option value="${c}" ${s.cycles === c ? 'selected' : ''}>${c === 'auto' ? 'Auto (recommended)' : c}</option>`).join('')}</select></div>
+    <p>Settings apply the next time the program runs. Slower games often need higher cycles; too high can break sound timing.</p>
+    <p><button class="btn98" id="set-save">Save Settings</button></p>`, 'padded');
+  const win = createWindow({ title: `${prog.name} — Settings`, icon: '⚙', width: 400, height: 320, body: wrap, menu: null });
+  $('#set-save', wrap).onclick = async () => {
+    prog.settings = { backend: $('#set-backend', wrap).value, cycles: $('#set-cycles', wrap).value };
+    await progPut(prog);
+    win.close();
+    if (onSaved) onSaved();
+  };
+}
+function exportProgram(prog) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(prog.bundle);
+  a.download = `${prog.name.replace(/[^\w\- ]+/g, '').trim() || 'program'}.jsdos`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 }
 function openDOSDemo() {
   const wrap = div('');
@@ -382,19 +408,29 @@ async function openPrograms() {
     const progs = (await progAll().catch(() => [])).sort((a, b) => a.addedAt - b.addedAt);
     wrap.innerHTML = `<div style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="btn98" id="pg-import">Import DOS program…</button>
-        <button class="btn98" id="pg-demo">Try Digger demo</button></div>
+        <button class="btn98" id="pg-demo">Try Digger demo</button>
+        <input id="pg-search" type="text" placeholder="Search programs…" style="flex:1;min-width:140px;padding:4px 6px"></div>
       <p style="margin:4px 0">Provide your own DOS game or app as a <b>.zip</b> (with its .EXE/.COM/.BAT inside), a <b>.jsdos</b> bundle, or a single DOS executable. Everything runs locally in your browser — nothing is uploaded. Windows .EXE files will not run here.</p>`;
     if (!progs.length) wrap.append(div('<p><i>No programs imported yet.</i></p>'));
     for (const p of progs) {
       const row = div(`<span class="pname">▶ ${escapeHtml(p.name)}</span><span class="psize">${(p.size / 1024).toFixed(0)} KB</span>`, 'prog-row');
-      const run = document.createElement('button'); run.className = 'btn98'; run.textContent = 'Run';
-      run.onclick = () => openDOSPlayer(p);
-      const del = document.createElement('button'); del.className = 'btn98'; del.textContent = 'Delete';
-      del.onclick = async () => { if (confirm(`Delete "${p.name}" from this browser?`)) { await progDel(p.id); render(); } };
-      row.append(run, del); wrap.append(row);
+      row.dataset.name = p.name.toLowerCase();
+      const mk = (label, fn) => { const b = document.createElement('button'); b.className = 'btn98'; b.textContent = label; b.onclick = fn; return b; };
+      row.append(
+        mk('Run', () => openDOSPlayer(p)),
+        mk('Settings', () => openProgramSettings(p, render)),
+        mk('Rename', async () => { const n = (prompt('Program name:', p.name) || '').trim(); if (n) { p.name = n; await progPut(p); render(); } }),
+        mk('Export', () => exportProgram(p)),
+        mk('Delete', async () => { if (confirm(`Delete "${p.name}" from this browser?`)) { await progDel(p.id); render(); } })
+      );
+      wrap.append(row);
     }
     $('#pg-import', wrap).onclick = openProgramPicker;
     $('#pg-demo', wrap).onclick = openDOSDemo;
+    $('#pg-search', wrap).addEventListener('input', e => {
+      const q = e.target.value.toLowerCase();
+      $$('.prog-row', wrap).forEach(r => r.style.display = r.dataset.name.includes(q) ? '' : 'none');
+    });
   }
   refreshProgramsList = async () => { if (document.contains(wrap)) await render(); };
   render();

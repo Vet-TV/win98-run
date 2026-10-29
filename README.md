@@ -53,6 +53,9 @@ No build step and no dependencies. Requires Node 18+.
   DOS import and playback load JSZip and the js-dos runtime from CDNs, so
   they need an internet connection. A streamed Digger demo is included under
   DOS Programs to smoke-test the runtime.
+- DOS Programs library: search, rename, export (`.jsdos` backup), delete, and
+  per-program settings — DOSBox or DOSBox-X backend and CPU cycles — plus a
+  fullscreen button in the player window.
 
 ## Ideas borrowed from the reference sites
 

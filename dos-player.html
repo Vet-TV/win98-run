@@ -15,6 +15,7 @@
 <body>
 <div id="dos"><div id="msg">Loading DOS…</div></div>
 <script src="https://v8.js-dos.com/latest/js-dos.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
 (function () {
   var msg = document.getElementById('msg');
@@ -24,12 +25,27 @@
   function fail(text) { msg.innerHTML = '<b>DOS could not start.</b><br><br>' + text; }
   if (typeof Dos !== 'function') { fail('The js-dos runtime did not load. This feature needs an internet connection.'); return; }
 
-  function start(url, saveKey) {
+  function applyCycles(blob, cycles) {
+    if (!cycles || cycles === 'auto' || typeof JSZip === 'undefined') return Promise.resolve(URL.createObjectURL(blob));
+    return JSZip.loadAsync(blob).then(function (zip) {
+      var conf = zip.file('.jsdos/dosbox.conf');
+      if (!conf) return URL.createObjectURL(blob);
+      return conf.async('string').then(function (text) {
+        if (/^cycles\s*=.*$/mi.test(text)) text = text.replace(/^cycles\s*=.*$/mi, 'cycles=' + cycles);
+        else if (/\[cpu\]/i.test(text)) text = text.replace(/\[cpu\]/i, '[cpu]\r\ncycles=' + cycles);
+        else text += '\r\n[cpu]\r\ncycles=' + cycles + '\r\n';
+        zip.file('.jsdos/dosbox.conf', text);
+        return zip.generateAsync({ type: 'blob' }).then(function (b) { return URL.createObjectURL(b); });
+      });
+    }).catch(function () { return URL.createObjectURL(blob); });
+  }
+
+  function start(url, saveKey, backend) {
     msg.remove();
     var props = Dos(document.getElementById('dos'), {
       url: url,
       autoStart: true,
-      backend: 'dosbox',
+      backend: backend === 'dosboxX' ? 'dosboxX' : 'dosbox',
       backendLocked: true,
       theme: 'dark',
       renderAspect: 'Fit',
@@ -52,7 +68,8 @@
     get.onsuccess = function () {
       var prog = get.result;
       if (!prog || !prog.bundle) { fail('That program is no longer in this browser. Import it again from DOS Programs.'); return; }
-      start(URL.createObjectURL(prog.bundle), 'win98-prog-' + prog.id);
+      var settings = prog.settings || {};
+      applyCycles(prog.bundle, settings.cycles).then(function (url) { start(url, 'win98-prog-' + prog.id, settings.backend); });
     };
   };
 })();
