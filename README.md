@@ -68,10 +68,12 @@ No build step and no dependencies. Requires Node 18+.
 
 **Win98 Image (v86)** on the desktop / Start menu runs a real x86 PC emulator
 ([v86](https://github.com/copy/v86)) in a window. Import your own bootable
-Windows 98 hard-disk image (`.img`, optionally with an `.iso` CD attached) —
+Windows disk image (`.img`, optionally with an `.iso` CD attached) —
 the image is stored only in your browser and never uploaded. We do not
 supply a Windows image. Small images mount as a floppy, larger ones as a
-hard disk (128 MB RAM). A bundled FreeDOS floppy (see
+hard disk. Guest profiles set the RAM: Windows 98/ME 128 MB, Windows 2000
+256 MB, Windows XP 512 MB, Vista 1 GB (experimental), or pick RAM manually.
+A bundled FreeDOS floppy (see
 `assets/FREEDOS-NOTICE.txt`) tests the engine.
 
 Spike findings: the emulator starts in ~1s and a DOS floppy reaches its

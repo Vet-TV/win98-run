@@ -273,6 +273,14 @@ function idbOpen() {
   });
   return _idb;
 }
+async function diskGet(id) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction('diskimages', 'readonly').objectStore('diskimages').get(id);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
 async function diskPut(rec) {
   const db = await idbOpen();
   return new Promise((resolve, reject) => {
@@ -450,28 +458,53 @@ async function openPrograms() {
 
 /* ---------- v86 spike: real PC emulator for a user-provided disk image ---------- */
 let pendingDisk = null;
+const V86_PROFILES = { win98: 128, winme: 128, win2000: 256, winxp: 512, vista: 1024 };
+function v86Settings() { try { return JSON.parse(localStorage.getItem('win98-run-v86')) || { profile: 'win98', ramMB: 128 }; } catch { return { profile: 'win98', ramMB: 128 }; } }
+function saveV86Settings(s) { localStorage.setItem('win98-run-v86', JSON.stringify(s)); }
 function openV86() {
-  const wrap = div(`<h3 style="margin-top:0">Windows 98 disk image — v86 spike</h3>
-    <p>This runs a <b>real x86 PC emulator</b> (v86) in a window. Provide your own bootable Windows 98 hard-disk image (<b>.img</b>). We do not supply or distribute a Windows image.</p>
-    <p>Small images (up to ~2.8 MB) are mounted as a floppy; larger images as a hard disk. You can optionally attach a CD image (<b>.iso</b>) afterwards, for installers.</p>
+  const cur = v86Settings();
+  const wrap = div(`<h3 style="margin-top:0">Windows disk image — v86 spike</h3>
+    <p>This runs a <b>real x86 PC emulator</b> (v86) in a window. Provide your own bootable hard-disk image (<b>.img</b>) — Windows 98, ME, 2000, or XP. We do not supply or distribute a Windows image.</p>
+    <div class="field"><label>Guest profile</label>
+      <select id="v86-profile" style="width:100%;padding:4px">
+        <option value="win98" ${cur.profile === 'win98' ? 'selected' : ''}>Windows 98 / 98SE — 128 MB</option>
+        <option value="winme" ${cur.profile === 'winme' ? 'selected' : ''}>Windows ME — 128 MB</option>
+        <option value="win2000" ${cur.profile === 'win2000' ? 'selected' : ''}>Windows 2000 — 256 MB</option>
+        <option value="winxp" ${cur.profile === 'winxp' ? 'selected' : ''}>Windows XP — 512 MB</option>
+        <option value="vista" ${cur.profile === 'vista' ? 'selected' : ''}>Windows Vista — 1 GB (experimental, likely very slow)</option>
+      </select></div>
+    <div class="field"><label>RAM</label>
+      <select id="v86-ram" style="width:100%;padding:4px">${[64, 128, 256, 512, 1024].map(m => `<option value="${m}" ${cur.ramMB === m ? 'selected' : ''}>${m >= 1024 ? (m / 1024) + ' GB' : m + ' MB'}</option>`).join('')}</select></div>
+    <p>Small images (up to ~2.8 MB) mount as a floppy; larger images as a hard disk. Optional CD image (<b>.iso</b>) can be attached after import. For Windows 2000/XP images, set the guest PC type to <b>Standard PC</b> (not ACPI) when preparing the image.</p>
     <p><button class="btn98" id="v86-import">Import disk image (.img)…</button>
+    <button class="btn98" id="v86-last">Boot last imported image</button>
     <button class="btn98" id="v86-demo">Boot FreeDOS demo instead</button></p>
     <p>Expect a slow boot and no 3D acceleration. Sound, saving the disk back, and performance are being evaluated in this spike.</p>`, 'padded');
-  createWindow({ title: 'Win98 Image (v86 spike)', icon: '▣', width: 520, height: 360, body: wrap, menu: null });
+  createWindow({ title: 'Win98 Image (v86 spike)', icon: '▣', width: 540, height: 480, body: wrap, menu: null });
+  const profileSel = $('#v86-profile', wrap), ramSel = $('#v86-ram', wrap);
+  profileSel.onchange = () => { ramSel.value = String(V86_PROFILES[profileSel.value] || 128); saveV86Settings({ profile: profileSel.value, ramMB: Number(ramSel.value) }); };
+  ramSel.onchange = () => saveV86Settings({ profile: profileSel.value, ramMB: Number(ramSel.value) });
   $('#v86-import', wrap).onclick = () => $('#disk-input').click();
   $('#v86-demo', wrap).onclick = () => openV86Player('v86-player.html?demo=1', 'FreeDOS (demo)');
+  $('#v86-last', wrap).onclick = async () => {
+    const last = await diskGet('last').catch(() => null);
+    if (!last) { alert('No disk image imported yet in this browser. Import one first.'); return; }
+    openV86Player('v86-player.html?img=last', last.name);
+  };
 }
 function openV86Player(src, name) {
+  const ram = v86Settings().ramMB || 128;
+  if (!/[?&]ram=/.test(src)) src += (src.includes('?') ? '&' : '?') + 'ram=' + ram;
   const wrap = div('');
   wrap.style.height = '100%';
   wrap.innerHTML = `<iframe class="dos-frame" title="${escapeHtml(name)}" src="${src}" allow="autoplay; fullscreen; gamepad"></iframe>`;
   const win = createWindow({ title: `${name} — v86`, icon: '▣', width: 760, height: 560, body: wrap, menu: ['File', 'View', 'Help'] });
   win.body.style.background = '#000';
-  win.el.querySelector('.statusbar span').textContent = 'v86 spike • Your image stays on this device • Close the window to stop the PC';
+  win.el.querySelector('.statusbar span').textContent = `v86 spike • ${v86Settings().profile} profile • ${ram} MB RAM • Your image stays on this device • Close the window to stop the PC`;
 }
 async function importDiskImage(file) {
   const kind = file.size <= 2.88 * 1024 * 1024 ? 'fda' : 'hda';
-  pendingDisk = { id: 'last', blob: file, name: file.name, kind, size: file.size, addedAt: Date.now(), isoBlob: null, isoName: null };
+  pendingDisk = { id: 'last', blob: file, name: file.name, kind, size: file.size, addedAt: Date.now(), isoBlob: null, isoName: null, ramMB: v86Settings().ramMB, profile: v86Settings().profile };
   await diskPut(pendingDisk);
   if (confirm(`Disk image "${file.name}" saved (${kind === 'fda' ? 'floppy' : 'hard disk'}).\n\nAttach a CD image (.iso) too? Cancel boots without one.`)) {
     $('#iso-input').click();
