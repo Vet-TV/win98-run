@@ -31,6 +31,7 @@
   <button id="btn-restart" type="button">Restart PC</button>
   <button id="btn-stop" type="button">Stop</button>
   <button id="btn-screenshot" type="button">📷 Screenshot</button>
+  <button id="btn-lock" type="button">🖱 Lock Mouse</button>
   <span id="keys">
     <button type="button" data-key="13">⏎ Enter</button>
     <button type="button" data-key="119">F8</button>
@@ -44,6 +45,7 @@
   </span>
   <span class="warn">Spike: disk changes are not saved yet</span>
 </div>
+<div id="lock-badge" style="display:none; position:fixed; bottom:10px; left:50%; transform:translateX(-50%); z-index:7; padding:4px 14px; background:rgba(20,20,30,.85); color:#ffd27f; font-size:12px; border-radius:4px; pointer-events:none">Mouse &amp; keyboard captured — press <b>Right Ctrl</b> or <b>Esc</b> to release</div>
 <div id="screen_container"><div id="msg">Loading the PC emulator…</div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/v86@0.5.472/build/libv86.js"></script>
@@ -103,6 +105,36 @@
     emulator.add_listener('emulator-started', function () { setStatus('PC started at ' + ((performance.now() - t0) / 1000).toFixed(1) + 's — booting the disk…'); });
   }
 
+  var mouseLocked = false;
+  function updateLockUI() {
+    document.getElementById('lock-badge').style.display = mouseLocked ? '' : 'none';
+    document.getElementById('btn-lock').textContent = mouseLocked ? '🖱 Unlock Mouse (Right Ctrl)' : '🖱 Lock Mouse';
+  }
+  function lockMouse() {
+    if (!emulator) { setStatus('PC is not running yet.'); return; }
+    if (mouseLocked) { document.exitPointerLock(); return; }
+    focusKeyboard();
+    try {
+      var p = emulator.lock_mouse();
+      if (p && p.catch) p.catch(function () {
+        var sc = document.getElementById('screen_container');
+        try {
+          var r = sc && sc.requestPointerLock && sc.requestPointerLock();
+          if (r && r.catch) r.catch(function (err) { setStatus('Mouse lock was blocked (' + (err && err.name ? err.name : 'browser policy') + ') — click Lock Mouse again, or allow pointer lock for this site.'); });
+        } catch (err) { setStatus('Mouse lock was blocked (' + (err && err.name ? err.name : 'browser policy') + ').'); }
+      });
+    } catch (e) { setStatus('Mouse lock is not available in this browser.'); }
+  }
+  window.__win98LockMouse = lockMouse;
+  document.getElementById('btn-lock').onclick = lockMouse;
+  document.addEventListener('pointerlockchange', function () {
+    mouseLocked = !!document.pointerLockElement;
+    updateLockUI();
+    setStatus(mouseLocked ? 'Mouse locked — Right Ctrl or Esc releases it.' : 'Mouse released.');
+  });
+  window.addEventListener('keydown', function (e) {
+    if (mouseLocked && e.code === 'ControlRight') { e.preventDefault(); e.stopPropagation(); document.exitPointerLock(); }
+  }, true);
   document.getElementById('btn-screenshot').onclick = function () {
     if (!emulator) { setStatus('PC is not running yet.'); return; }
     try {
@@ -150,7 +182,7 @@
     if (b) { sendKey(Number(b.dataset.key)); return; }
     if (e.target.id === 'btn-focus') focusKeyboard();
   });
-  document.getElementById('screen_container').addEventListener('pointerdown', function () { setTimeout(focusKeyboard, 0); });
+  document.getElementById('screen_container').addEventListener('pointerdown', function () { focusKeyboard(); if (!mouseLocked && emulator) lockMouse(); });
   document.addEventListener('click', function () { try { emulator && emulator.keyboard_set_enabled(true); } catch (e) {} });
 
   if (demo) {

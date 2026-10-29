@@ -536,9 +536,10 @@ function openV86Player(src, name) {
   if (!/[?&]ram=/.test(src)) src += (src.includes('?') ? '&' : '?') + 'ram=' + ram;
   const wrap = div('');
   wrap.style.height = '100%';
-  wrap.innerHTML = `<iframe class="dos-frame" title="${escapeHtml(name)}" src="${src}" allow="autoplay; fullscreen; gamepad"></iframe>`;
+  wrap.innerHTML = `<iframe class="dos-frame" title="${escapeHtml(name)}" src="${src}" allow="autoplay; fullscreen; gamepad; pointer-lock"></iframe>`;
   const win = createWindow({ title: `${name} — v86`, icon: '▣', width: 760, height: 560, body: wrap, menu: ['File', 'View', 'Help'], menus: {
     File: [
+      { label: 'Lock / Unlock Mouse (Right Ctrl)', fn: a => { const f = $('iframe', a.body); f?.focus(); f?.contentWindow?.__win98LockMouse?.(); } },
       { label: 'Send Enter Key', fn: a => { const f = $('iframe', a.body); f?.contentWindow?.__win98SendKey?.(13); } },
       { label: 'Focus Keyboard', fn: a => { const f = $('iframe', a.body); f?.focus(); f?.contentWindow?.__win98FocusKeyboard?.(); } },
       { label: 'Close Window', fn: a => a.close() }
