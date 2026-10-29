@@ -2,9 +2,27 @@
 
 **Live: https://win98run.app**
 
-A Windows 98-style desktop simulation in the browser. Inspired by win32.run,
-OpenLair XP, and Quenq's Reborn XP. This is a simulation, not an emulator:
-it cannot run `.exe` files. Not affiliated with Microsoft.
+![Digger running inside the Windows 98 desktop](assets/screenshot.png)
+
+## What is this?
+
+win98-run is Windows 98 in your browser — a boot sequence, desktop, Start
+menu, taskbar, and working windows — with a real DOS emulator (js-dos /
+DOSBox) inside it.
+
+Bring your own DOS games and apps. Drop in a `.zip`, a `.jsdos` bundle, or a
+single DOS `.EXE`, `.COM`, or `.BAT`, and it runs in a window on the desktop.
+Your programs are stored only in your browser (IndexedDB). Nothing is
+uploaded, there is no account, and there is no server-side file storage.
+
+No game library is included or distributed. A streamed Digger demo is built
+into DOS Programs so you can try the emulator instantly.
+
+![Demo: Digger running in win98-run](assets/demo.gif)
+
+Inspired by win32.run, OpenLair XP, and Quenq's Reborn XP. This is a
+simulation with an emulator inside, not a full Windows emulator: Windows
+`.EXE` files do not run yet. Not affiliated with Microsoft.
 
 ## Run
 
