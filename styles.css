@@ -50,8 +50,12 @@ button{font-family:var(--font); font-size:13px; color:#000}
 .tbtns{display:flex; gap:2px}
 .tbtn{width:18px; height:16px; line-height:12px; padding:0; font-size:11px; font-weight:700; background:var(--face); border:1px solid; border-color:var(--white) var(--black) var(--black) var(--white); box-shadow:inset -1px -1px #808080, inset 1px 1px var(--face-light); cursor:pointer}
 .tbtn:active{border-color:var(--black) var(--white) var(--white) var(--black)}
-.menubar{display:flex; gap:2px; padding:3px 4px}
-.menubar span{padding:1px 6px; cursor:default}.menubar span:hover{background:var(--navy); color:#fff}
+.menubar{display:flex; gap:2px; padding:3px 4px; position:relative}
+.mbar-btn{padding:1px 6px; background:none; border:none; cursor:pointer}
+.mbar-btn:hover{background:var(--navy); color:#fff}
+.menu-dropdown{position:absolute; top:24px; z-index:50; min-width:190px; padding:3px; display:flex; flex-direction:column; background:var(--face); border:1px solid; border-color:var(--white) var(--black) var(--black) var(--white); box-shadow:2px 2px 6px rgba(0,0,0,.35)}
+.menu-dropdown .menu-item{text-align:left; padding:5px 10px; background:none; border:none; cursor:pointer}
+.menu-dropdown .menu-item:hover{background:var(--navy); color:#fff}
 .winbody{flex:1; overflow:auto; margin:2px; background:var(--white); border:1px solid; border-color:#808080 var(--white) var(--white) #808080; box-shadow:inset -1px -1px var(--face-light), inset 1px 1px var(--black)}
 .winbody.padded{padding:10px}.winbody.facematch{background:var(--face); border:none; box-shadow:none}
 .statusbar{display:flex; gap:2px; padding:2px}

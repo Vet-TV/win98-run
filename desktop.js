@@ -27,7 +27,7 @@ const windowsEl = $('#windows'), taskButtonsEl = $('#task-buttons');
 let zTop = 10, activeId = null, winSeq = 0;
 const openWins = new Map();
 
-function createWindow({ title, icon = '▣', width = 520, height = 380, body, onMount, menu = ['File', 'Edit', 'View', 'Help'] }) {
+function createWindow({ title, icon = '▣', width = 520, height = 380, body, onMount, menu = ['File', 'Edit', 'View', 'Help'], menus = null }) {
   const id = 'win' + (++winSeq);
   const el = document.createElement('section');
   el.className = 'window active'; el.dataset.id = id;
@@ -36,7 +36,7 @@ function createWindow({ title, icon = '▣', width = 520, height = 380, body, on
   el.innerHTML = `
     <div class="titlebar"><span class="ticon">${icon}</span><span class="ttitle">${title}</span>
       <span class="tbtns"><button class="tbtn" data-act="min" title="Minimize">_</button><button class="tbtn" data-act="max" title="Maximize">▢</button><button class="tbtn" data-act="close" title="Close">✕</button></span></div>
-    ${menu ? `<div class="menubar">${menu.map(m => `<span>${m}</span>`).join('')}</div>` : ''}
+    ${menu ? `<div class="menubar">${menu.map(m => `<button type="button" class="mbar-btn" data-menu-label="${m}">${m}</button>`).join('')}<div class="menu-dropdown hidden"></div></div>` : ''}
     <div class="winbody"></div>
     <div class="statusbar"><span>Ready</span></div><div class="resize"></div>`;
   $('.winbody', el).append(body);
@@ -54,6 +54,34 @@ function createWindow({ title, icon = '▣', width = 520, height = 380, body, on
   function restore() { el.classList.remove('minimized'); setActive(id); }
   function close() { el.remove(); task.remove(); openWins.delete(id); if (activeId === id) setActive(null); }
   api.close = close; api.restore = restore;
+
+  // Functional menu bar (File / View / Help actually do things)
+  const menuDefs = menus || {
+    File: [{ label: 'Close Window', fn: () => close() }],
+    Edit: [{ label: 'Select All Text', fn: () => { const t = $('textarea, input[type=text]', api.body); if (t) { t.focus(); t.select(); } else alert('Nothing to select in this window.'); } }],
+    View: [
+      { label: 'Minimize', fn: () => minimize() },
+      { label: 'Maximize / Restore', fn: () => el.classList.toggle('maximized') },
+      { label: 'Show Desktop', fn: () => { for (const w of openWins.values()) w.el.classList.add('minimized'); setActive(null); } }
+    ],
+    Help: [{ label: 'About / Controls', fn: () => alert(`${title}\n\nDrag windows by their title bar. Use the _ ▢ ✕ buttons to minimize, maximize, and close.\nPrograms and files you import stay only in this browser.`) }]
+  };
+  const menubarEl = $('.menubar', el), dropdownEl = $('.menu-dropdown', el);
+  if (menubarEl && dropdownEl) {
+    menubarEl.addEventListener('click', e => {
+      const btn = e.target.closest('.mbar-btn');
+      const item = e.target.closest('.menu-item');
+      if (item) { dropdownEl.classList.add('hidden'); const def = (menuDefs[dropdownEl.dataset.label] || [])[Number(item.dataset.idx)]; if (def) def.fn(api); return; }
+      if (!btn) return;
+      const label = btn.dataset.menuLabel;
+      if (!dropdownEl.classList.contains('hidden') && dropdownEl.dataset.label === label) { dropdownEl.classList.add('hidden'); return; }
+      dropdownEl.dataset.label = label;
+      dropdownEl.innerHTML = (menuDefs[label] || [{ label: 'No actions', fn: () => {} }]).map((d, i) => `<button type="button" class="menu-item" data-idx="${i}">${d.label}</button>`).join('');
+      dropdownEl.style.left = btn.offsetLeft + 'px';
+      dropdownEl.classList.remove('hidden');
+    });
+    el.addEventListener('pointerdown', e => { if (!e.target.closest('.menubar')) dropdownEl.classList.add('hidden'); });
+  }
 
   $('.tbtns', el).addEventListener('click', e => {
     const act = e.target.dataset.act; if (!act) return;
@@ -509,7 +537,18 @@ function openV86Player(src, name) {
   const wrap = div('');
   wrap.style.height = '100%';
   wrap.innerHTML = `<iframe class="dos-frame" title="${escapeHtml(name)}" src="${src}" allow="autoplay; fullscreen; gamepad"></iframe>`;
-  const win = createWindow({ title: `${name} — v86`, icon: '▣', width: 760, height: 560, body: wrap, menu: ['File', 'View', 'Help'] });
+  const win = createWindow({ title: `${name} — v86`, icon: '▣', width: 760, height: 560, body: wrap, menu: ['File', 'View', 'Help'], menus: {
+    File: [
+      { label: 'Send Enter Key', fn: a => { const f = $('iframe', a.body); f?.contentWindow?.__win98SendKey?.(13); } },
+      { label: 'Focus Keyboard', fn: a => { const f = $('iframe', a.body); f?.focus(); f?.contentWindow?.__win98FocusKeyboard?.(); } },
+      { label: 'Close Window', fn: a => a.close() }
+    ],
+    View: [
+      { label: 'Maximize / Restore', fn: a => a.el.classList.toggle('maximized') },
+      { label: 'Minimize', fn: a => a.el.classList.add('minimized') }
+    ],
+    Help: [{ label: 'Keyboard Help', fn: () => alert('Click inside the black emulator screen, or use File → Focus Keyboard.\n\nIf keys still do not reach the guest, use the ⏎ Enter / F8 buttons in the player toolbar at the top of the emulator — those send keys directly to the virtual PC.\n\nXP Setup: Enter = continue, F8 = accept licence, arrow keys = choose partition.') }]
+  } });
   win.body.style.background = '#000';
   win.el.querySelector('.statusbar span').textContent = `v86 spike • ${v86Settings().profile} profile • ${ram} MB RAM • Your image stays on this device • Close the window to stop the PC`;
 }

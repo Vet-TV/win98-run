@@ -24,6 +24,17 @@
   <span id="hud-ram"></span>
   <button id="btn-restart" type="button">Restart PC</button>
   <button id="btn-stop" type="button">Stop</button>
+  <span id="keys">
+    <button type="button" data-key="13">⏎ Enter</button>
+    <button type="button" data-key="119">F8</button>
+    <button type="button" data-key="27">Esc</button>
+    <button type="button" data-key="38">↑</button>
+    <button type="button" data-key="40">↓</button>
+    <button type="button" data-key="37">←</button>
+    <button type="button" data-key="39">→</button>
+    <button type="button" data-key="32">Space</button>
+    <button type="button" id="btn-focus">Focus keyboard</button>
+  </span>
   <span class="warn">Spike: disk changes are not saved yet</span>
 </div>
 <div id="screen_container"><div id="msg">Loading the PC emulator…</div></div>
@@ -87,6 +98,35 @@
 
   document.getElementById('btn-restart').onclick = function () { location.reload(); };
   document.getElementById('btn-stop').onclick = function () { if (emulator) { emulator.stop(); setStatus('Stopped.'); } };
+
+  function focusKeyboard() {
+    window.focus();
+    try { emulator && emulator.keyboard_set_enabled(true); } catch (e) {}
+    var sc = document.getElementById('screen_container');
+    if (sc) {
+      sc.setAttribute('tabindex', '0');
+      sc.focus({ preventScroll: true });
+      var ta = sc.querySelector('textarea');
+      if (ta) ta.focus({ preventScroll: true });
+      var cv = sc.querySelector('canvas');
+      if (cv) { cv.setAttribute('tabindex', '0'); cv.focus({ preventScroll: true }); }
+    }
+    setStatus('Keyboard focused — type now, or use the Enter/F8 buttons above.');
+  }
+  function sendKey(code) {
+    if (!emulator) { setStatus('PC is not running yet.'); return; }
+    try { emulator.keyboard_set_enabled(true); emulator.keyboard_send_keys([code]); } catch (e) { setStatus('Could not send that key.'); }
+    focusKeyboard();
+  }
+  window.__win98SendKey = sendKey;
+  window.__win98FocusKeyboard = focusKeyboard;
+  document.getElementById('keys').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-key]');
+    if (b) { sendKey(Number(b.dataset.key)); return; }
+    if (e.target.id === 'btn-focus') focusKeyboard();
+  });
+  document.getElementById('screen_container').addEventListener('pointerdown', function () { setTimeout(focusKeyboard, 0); });
+  document.addEventListener('click', function () { try { emulator && emulator.keyboard_set_enabled(true); } catch (e) {} });
 
   if (demo) {
     setStatus('Loading FreeDOS floppy demo…');
