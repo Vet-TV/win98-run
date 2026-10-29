@@ -562,6 +562,7 @@ function openV86Player(src, name) {
     Help: [{ label: 'Keyboard Help', fn: () => alert('Click inside the black emulator screen, or use File → Focus Keyboard.\n\nIf keys still do not reach the guest, use the ⏎ Enter / F8 buttons in the player toolbar at the top of the emulator — those send keys directly to the virtual PC.\n\nXP Setup: Enter = continue, F8 = accept licence, arrow keys = choose partition.') }]
   } });
   win.body.style.background = '#000';
+  win.el.classList.add('maximized');
   win.el.querySelector('.statusbar span').textContent = `v86 spike • ${v86Settings().profile} profile • ${ram} MB RAM • Your image stays on this device • Close the window to stop the PC`;
 }
 async function importDiskImage(file) {
