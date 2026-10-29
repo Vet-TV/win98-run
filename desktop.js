@@ -598,11 +598,66 @@ async function importDiskImage(file) {
   }
 }
 
+/* ---------- Account & cloud sync (Phase B) ---------- */
+function openAccount() {
+  const wrap = div('<p>Loading…</p>', 'padded');
+  const win = createWindow({ title: 'Account & Cloud', icon: '☁', width: 520, height: 430, body: wrap, menu: null });
+  const C = window.Win98Cloud;
+  async function render() {
+    if (!C || !C.enabled) {
+      wrap.innerHTML = `<h3 style="margin-top:0">Cloud is not configured yet</h3>
+        <p>Your files and saved states currently live <b>only in this browser</b>. Cloud sync turns on when a Supabase project is connected:</p>
+        <p>1. Create a Supabase project (or provision one via Stripe Projects).<br>
+        2. Run <b>supabase/schema.sql</b> in its SQL editor and create a private bucket named <b>vm-states</b>.<br>
+        3. Put the project URL and anon key in <b>cloud-config.js</b>.</p>
+        <p>Nothing is uploaded until you sign in and press an Upload button.</p>`;
+      return;
+    }
+    const sess = await C.session().catch(() => null);
+    if (!sess) {
+      wrap.innerHTML = `<h3 style="margin-top:0">Sign in</h3>
+        <div class="field"><label>Email</label><input type="text" id="acc-email" autocomplete="email"></div>
+        <div class="field"><label>Password</label><input type="password" id="acc-pass" autocomplete="current-password" style="width:100%;padding:4px 6px"></div>
+        <p><button class="btn98" id="acc-in">Sign In</button> <button class="btn98" id="acc-up">Create Account</button></p>
+        <p id="acc-msg"></p>`;
+      const msg = t => { $('#acc-msg', wrap).textContent = t; };
+      $('#acc-in', wrap).onclick = async () => { try { msg('Signing in…'); await C.signIn($('#acc-email', wrap).value.trim(), $('#acc-pass', wrap).value); render(); } catch (e) { msg(e.message); } };
+      $('#acc-up', wrap).onclick = async () => { try { msg('Creating account…'); await C.signUp($('#acc-email', wrap).value.trim(), $('#acc-pass', wrap).value); msg('Account created. Check your email if confirmation is required, then sign in.'); } catch (e) { msg(e.message); } };
+      return;
+    }
+    let rows = [];
+    try { rows = await C.listStates(); } catch (e) { /* show below */ }
+    const used = rows.reduce((a, r) => a + (r.size || 0), 0);
+    wrap.innerHTML = `<h3 style="margin-top:0">Signed in</h3>
+      <p>${escapeHtml(sess.user.email || '')} &nbsp;<button class="btn98" id="acc-out">Sign Out</button></p>
+      <p>Cloud usage: ${(used / 1073741824).toFixed(2)} GB of 25 GB</p>
+      <p><button class="btn98" id="up-last">Upload saved state (last disk)</button>
+      <button class="btn98" id="up-install">Upload install state</button></p>
+      <p id="acc-msg"></p><div id="acc-list"></div>`;
+    const msg = t => { const m = $('#acc-msg', wrap); if (m) m.textContent = t; };
+    $('#acc-out', wrap).onclick = async () => { await C.signOut(); render(); };
+    const up = key => async () => { try { msg('Uploading… large states can take a while.'); await C.uploadState(key); msg('Uploaded.'); render(); } catch (e) { msg(e.message); } };
+    $('#up-last', wrap).onclick = up('last:state');
+    $('#up-install', wrap).onclick = up('install:state');
+    const list = $('#acc-list', wrap);
+    if (!rows.length) list.append(div('<p><i>No cloud states yet.</i></p>'));
+    for (const r of rows) {
+      const row = div(`<span class="pname">☁ ${escapeHtml(r.name || r.disk_key)}</span><span class="psize">${(r.size / 1048576).toFixed(1)} MB</span>`, 'prog-row');
+      const dl = document.createElement('button'); dl.className = 'btn98'; dl.textContent = 'Download & Resume';
+      dl.onclick = async () => { try { msg('Downloading…'); await C.downloadState(r); msg('Downloaded. Boot the disk — it will resume this state.'); } catch (e) { msg(e.message); } };
+      const del = document.createElement('button'); del.className = 'btn98'; del.textContent = 'Delete';
+      del.onclick = async () => { if (confirm('Delete this cloud state?')) { try { await C.deleteState(r); render(); } catch (e) { msg(e.message); } } };
+      row.append(dl, del); list.append(row);
+    }
+  }
+  render();
+}
+
 /* ---------- Desktop, Start menu, tray ---------- */
 const APPS = {
   explorer: (p) => openExplorer(p || 'My Computer'), notepad: () => openNotepad(), paint: openPaint,
   minesweeper: openMinesweeper, calculator: openCalculator, ie: openIE, display: openDisplay, system: openSystem,
-  programs: openPrograms, v86: openV86
+  programs: openPrograms, v86: openV86, account: openAccount
 };
 const DESKTOP_ICONS = [
   ['🖥', 'My Computer', () => openExplorer('My Computer')], ['📁', 'My Documents', () => openExplorer('My Documents')],
