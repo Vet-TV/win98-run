@@ -94,6 +94,37 @@
     return;
   }
 
+  function bootInstall(rec) {
+    var sizeGB = [4, 8, 12].includes(rec.diskSizeGB) ? rec.diskSizeGB : 8;
+    var sizeBytes = sizeGB * 1024 * 1024 * 1024;
+    setStatus('Creating a blank ' + sizeGB + ' GB disk and booting the installer CD… Do not close this window during install.');
+    var chunk = new ArrayBuffer(8 * 1024 * 1024);
+    var parts = [];
+    for (var i = 0; i < sizeBytes / chunk.byteLength; i++) parts.push(chunk);
+    var blankDisk = new Blob(parts, { type: 'application/octet-stream' });
+    boot({
+      hda: { url: URL.createObjectURL(blankDisk), async: true, size: sizeBytes },
+      cdrom: { url: URL.createObjectURL(rec.isoBlob) },
+      boot_order: 0x213
+    });
+  }
+
+  if (params.get('install')) {
+    var ireq = indexedDB.open('win98-run-db-v1', 2);
+    ireq.onerror = function () { fail('Could not open local storage.'); };
+    ireq.onsuccess = function () {
+      var get = ireq.result.transaction('diskimages', 'readonly').objectStore('diskimages').get('install');
+      get.onerror = function () { fail('Could not read the installer ISO.'); };
+      get.onsuccess = function () {
+        var rec = get.result;
+        if (!rec || !rec.isoBlob) { fail('No installer ISO found. Use Install Windows from ISO in the Win98 Image window first.'); return; }
+        setStatus('Installer: ' + rec.isoName);
+        bootInstall(rec);
+      };
+    };
+    return;
+  }
+
   var req = indexedDB.open('win98-run-db-v1', 2);
   req.onupgradeneeded = function () {
     var db = req.result;

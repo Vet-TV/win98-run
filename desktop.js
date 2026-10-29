@@ -458,6 +458,12 @@ async function openPrograms() {
 
 /* ---------- v86 spike: real PC emulator for a user-provided disk image ---------- */
 let pendingDisk = null;
+let pendingDiskSizeGB = 8;
+async function importInstallISO(file) {
+  const rec = { id: 'install', isoBlob: file, isoName: file.name, diskSizeGB: pendingDiskSizeGB, ramMB: v86Settings().ramMB, profile: v86Settings().profile, addedAt: Date.now() };
+  await diskPut(rec);
+  openV86Player('v86-player.html?install=1', `Install: ${file.name}`);
+}
 const V86_PROFILES = { win98: 128, winme: 128, win2000: 256, winxp: 512, vista: 1024 };
 function v86Settings() { try { return JSON.parse(localStorage.getItem('win98-run-v86')) || { profile: 'win98', ramMB: 128 }; } catch { return { profile: 'win98', ramMB: 128 }; } }
 function saveV86Settings(s) { localStorage.setItem('win98-run-v86', JSON.stringify(s)); }
@@ -476,14 +482,19 @@ function openV86() {
     <div class="field"><label>RAM</label>
       <select id="v86-ram" style="width:100%;padding:4px">${[64, 128, 256, 512, 1024].map(m => `<option value="${m}" ${cur.ramMB === m ? 'selected' : ''}>${m >= 1024 ? (m / 1024) + ' GB' : m + ' MB'}</option>`).join('')}</select></div>
     <p>Small images (up to ~2.8 MB) mount as a floppy; larger images as a hard disk. Optional CD image (<b>.iso</b>) can be attached after import. For Windows 2000/XP images, set the guest PC type to <b>Standard PC</b> (not ACPI) when preparing the image.</p>
+    <div class="field"><label>Blank disk size (for ISO installs)</label>
+      <select id="v86-disksize" style="width:100%;padding:4px"><option value="4">4 GB</option><option value="8" selected>8 GB (recommended for XP)</option><option value="12">12 GB</option></select></div>
     <p><button class="btn98" id="v86-import">Import disk image (.img)…</button>
+    <button class="btn98" id="v86-install">Install Windows from ISO…</button>
     <button class="btn98" id="v86-last">Boot last imported image</button>
     <button class="btn98" id="v86-demo">Boot FreeDOS demo instead</button></p>
+    <p><b>Have an installer ISO</b> (like a Windows XP CD image)? Use <b>Install Windows from ISO</b>: it creates a blank virtual hard disk, boots the CD, and runs Setup. An ISO by itself is not a hard disk, so it cannot be attached until a disk exists. Do not close the window during install — disk changes are not saved yet, so an install only lasts while the window stays open.</p>
     <p>Expect a slow boot and no 3D acceleration. Sound, saving the disk back, and performance are being evaluated in this spike.</p>`, 'padded');
   createWindow({ title: 'Win98 Image (v86 spike)', icon: '▣', width: 540, height: 480, body: wrap, menu: null });
   const profileSel = $('#v86-profile', wrap), ramSel = $('#v86-ram', wrap);
   profileSel.onchange = () => { ramSel.value = String(V86_PROFILES[profileSel.value] || 128); saveV86Settings({ profile: profileSel.value, ramMB: Number(ramSel.value) }); };
   ramSel.onchange = () => saveV86Settings({ profile: profileSel.value, ramMB: Number(ramSel.value) });
+  $('#v86-install', wrap).onclick = () => { pendingDiskSizeGB = Number($('#v86-disksize', wrap).value || 8); $('#install-iso-input').click(); };
   $('#v86-import', wrap).onclick = () => $('#disk-input').click();
   $('#v86-demo', wrap).onclick = () => openV86Player('v86-player.html?demo=1', 'FreeDOS (demo)');
   $('#v86-last', wrap).onclick = async () => {
@@ -578,6 +589,11 @@ $('#disk-input').addEventListener('change', async e => {
   if (!f) return;
   try { await importDiskImage(f); } catch (err) { alert('Could not load that disk image:\n\n' + err.message); }
 });
+$('#install-iso-input').addEventListener('change', async e => {
+  const f = e.target.files?.[0]; e.target.value = '';
+  if (!f) return;
+  try { await importInstallISO(f); } catch (err) { alert('Could not start the installer:\n\n' + err.message); }
+});
 $('#iso-input').addEventListener('change', async e => {
   const f = e.target.files?.[0]; e.target.value = '';
   if (pendingDisk && f) { pendingDisk.isoBlob = f; pendingDisk.isoName = f.name; try { await diskPut(pendingDisk); } catch { /* boot without saved ISO */ } }
@@ -586,6 +602,8 @@ $('#iso-input').addEventListener('change', async e => {
 $('#desktop').addEventListener('drop', e => {
   e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (!f) return;
   if (/\.(zip|jsdos|exe|com|bat)$/i.test(f.name)) { importProgramFile(f).catch(err => alert('Could not run that program:\n\n' + err.message)); return; }
+  if (/\.img$/i.test(f.name)) { importDiskImage(f).catch(err => alert('Could not load that disk image:\n\n' + err.message)); return; }
+  if (/\.iso$/i.test(f.name)) { if (confirm(`"${f.name}" is an installer CD image.\n\nOK: create a blank disk and install from it.\nCancel: open the Win98 Image window for other options.`)) { pendingDiskSizeGB = 8; importInstallISO(f).catch(err => alert('Could not start the installer:\n\n' + err.message)); } else openV86(); return; }
   if (/text|json/.test(f.type) || /\.(txt|md)$/i.test(f.name)) f.text().then(t => { files[f.name] = t; saveFiles(); openNotepad(f.name); });
   else if (f.type.startsWith('image/')) { const r = new FileReader(); r.onload = () => { settings.wallpaperImage = r.result; try { saveSettings(); } catch { /* image too large to persist; kept for this session */ } applyWallpaper(); }; r.readAsDataURL(f); }
   else alert(`"${f.name}" was received, but this simulation can only open text files, images, and DOS programs (.zip, .jsdos, .exe, .com, .bat).`);

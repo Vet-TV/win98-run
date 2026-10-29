@@ -70,7 +70,10 @@ No build step and no dependencies. Requires Node 18+.
 ([v86](https://github.com/copy/v86)) in a window. Import your own bootable
 Windows disk image (`.img`, optionally with an `.iso` CD attached) —
 the image is stored only in your browser and never uploaded. We do not
-supply a Windows image. Small images mount as a floppy, larger ones as a
+supply a Windows image. **Install Windows from ISO** creates a blank virtual
+hard disk (4/8/12 GB), boots an installer CD image, and runs Setup — verified
+to reach Windows XP Setup with a user-provided XP SP3 ISO. Disk changes are
+not saved yet, so keep the window open for the whole install. Small images mount as a floppy, larger ones as a
 hard disk. Guest profiles set the RAM: Windows 98/ME 128 MB, Windows 2000
 256 MB, Windows XP 512 MB, Vista 1 GB (experimental), or pick RAM manually.
 A bundled FreeDOS floppy (see
