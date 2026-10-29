@@ -30,6 +30,7 @@
   <span id="hud-ram"></span>
   <button id="btn-restart" type="button">Restart PC</button>
   <button id="btn-stop" type="button">Stop</button>
+  <button id="btn-screenshot" type="button">📷 Screenshot</button>
   <span id="keys">
     <button type="button" data-key="13">⏎ Enter</button>
     <button type="button" data-key="119">F8</button>
@@ -102,6 +103,24 @@
     emulator.add_listener('emulator-started', function () { setStatus('PC started at ' + ((performance.now() - t0) / 1000).toFixed(1) + 's — booting the disk…'); });
   }
 
+  document.getElementById('btn-screenshot').onclick = function () {
+    if (!emulator) { setStatus('PC is not running yet.'); return; }
+    try {
+      var shot = emulator.screen_make_screenshot();
+      var url = null;
+      if (shot && shot.tagName === 'CANVAS') url = shot.toDataURL('image/png');
+      else if (shot && shot.src) url = shot.src;
+      if (!url) { setStatus('Screenshot is not ready yet — try again in a second.'); return; }
+      var a = document.createElement('a');
+      var stamp = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').slice(0, 19);
+      a.href = url;
+      a.download = 'win98-run-screenshot-' + stamp + '.png';
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setStatus('Screenshot saved to your Downloads folder.');
+    } catch (e) { setStatus('Screenshot failed in this browser.'); }
+  };
   document.getElementById('btn-restart').onclick = function () { location.reload(); };
   document.getElementById('btn-stop').onclick = function () { if (emulator) { emulator.stop(); setStatus('Stopped.'); } };
 
