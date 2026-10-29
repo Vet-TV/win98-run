@@ -6,17 +6,23 @@
 <title>v86 — PC Emulator Spike</title>
 <style>
   html, body { height: 100%; margin: 0; background: #000; overflow: hidden; font-family: Tahoma, Verdana, sans-serif; }
-  #hud { position: fixed; top: 0; left: 0; right: 0; z-index: 5; display: flex; gap: 12px; align-items: center;
-    padding: 5px 10px; background: rgba(20,20,30,.92); color: #cfe3ff; font-size: 12px; }
+  #hud { position: fixed; top: 0; left: 0; right: 0; z-index: 5; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+    padding: 5px 10px; background: rgba(20,20,30,.92); color: #cfe3ff; font-size: 12px;
+    transform: translateY(calc(-100% + 7px)); opacity: .25; transition: transform .18s ease, opacity .18s ease; }
+  #hud:hover, #hud:focus-within { transform: translateY(0); opacity: 1; }
+  #hud-tab { position: fixed; top: 0; left: 50%; transform: translateX(-50%); z-index: 6; padding: 0 12px 2px;
+    background: rgba(20,20,30,.75); color: #9db9dd; font-size: 10px; border-radius: 0 0 6px 6px; pointer-events: none; }
+  body:has(#hud:hover) #hud-tab, body:has(#hud:focus-within) #hud-tab { display: none; }
   #hud button { background: #2b4a77; color: #fff; border: 1px solid #6ea8ff; padding: 3px 10px; cursor: pointer; }
   #hud .warn { color: #ffd27f; }
-  #screen_container { position: absolute; inset: 30px 0 0 0; overflow: hidden; background: #000; }
+  #screen_container { position: absolute; inset: 0; overflow: hidden; background: #000; }
   #screen_container canvas { display: block; margin: 0 auto; }
   #screen_container textarea { display: none; }
   #msg { color: #c0c0c0; padding: 52px 18px 18px; font-size: 14px; line-height: 1.5; }
 </style>
 </head>
 <body>
+<div id="hud-tab">⌄ controls</div>
 <div id="hud">
   <span id="hud-status">Loading v86…</span>
   <span id="hud-time"></span>
