@@ -79,6 +79,11 @@ hard disk. Guest profiles set the RAM: Windows 98/ME 128 MB, Windows 2000
 A bundled FreeDOS floppy (see
 `assets/FREEDOS-NOTICE.txt`) tests the engine.
 
+Networking: the guest can have a virtual NE2000 ethernet card (DHCP) via a
+Wisp relay — either the public relay, or a local relay in the `relay/`
+folder that routes traffic through your own PC's connection
+(`cd relay; npm install; npm start`, then choose "my own PC relay").
+
 Spike findings: the emulator starts in ~1s and a DOS floppy reaches its
 prompt in seconds at a smooth UI rate. Windows 98 itself is untested here
 because it needs a user-prepared image (see v86's Windows 9x guide). Known

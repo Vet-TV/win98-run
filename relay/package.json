@@ -1,0 +1,13 @@
+{
+  "name": "win98-run-relay",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local Wisp relay: gives the browser VM internet through your own PC connection.",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "@mercuryworkshop/wisp-js": "^0.5.1"
+  }
+}

@@ -28,6 +28,7 @@
   <span id="hud-time"></span>
   <span id="hud-fps"></span>
   <span id="hud-ram"></span>
+  <span id="hud-net"></span>
   <button id="btn-restart" type="button">Restart PC</button>
   <button id="btn-stop" type="button">Stop</button>
   <button id="btn-screenshot" type="button">📷 Screenshot</button>
@@ -58,11 +59,15 @@
   var demo = params.get('demo');
   var RAM_CHOICES = [64, 128, 256, 512, 1024, 2048];
   var ramMB = RAM_CHOICES.includes(Number(params.get('ram'))) ? Number(params.get('ram')) : 128;
+  var NET_MODES = { public: 'wisps://wisp.mercurywork.shop/', local: 'wisp://127.0.0.1:12345', off: null };
+  var netMode = Object.prototype.hasOwnProperty.call(NET_MODES, params.get('net')) ? params.get('net') : 'public';
+  var netUrl = NET_MODES[netMode];
   var t0 = performance.now();
   var emulator = null;
   var firstFrameMs = null;
 
   document.getElementById('hud-ram').textContent = 'RAM ' + ramMB + ' MB';
+  document.getElementById('hud-net').textContent = netUrl ? ('Network: ' + netMode + ' relay') : 'Network: off';
   function setStatus(t) { statusEl.textContent = t; }
   function fail(t) { setStatus('Failed'); document.getElementById('msg').innerHTML = '<b>The PC could not start.</b><br><br>' + t; }
   if (typeof V86 !== 'function') { fail('The v86 runtime did not load. This feature needs an internet connection.'); return; }
@@ -99,6 +104,7 @@
       vga_memory_size: 8 * 1024 * 1024,
       autostart: true
     };
+    if (netUrl) settings.net_device = { type: 'ne2k', relay_url: netUrl };
     Object.keys(opts).forEach(function (k) { settings[k] = opts[k]; });
     emulator = new V86(settings);
     emulator.add_listener('emulator-ready', function () { setStatus('Emulator ready at ' + ((performance.now() - t0) / 1000).toFixed(1) + 's — booting…'); });

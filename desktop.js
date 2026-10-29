@@ -493,7 +493,8 @@ async function importInstallISO(file) {
   openV86Player('v86-player.html?install=1', `Install: ${file.name}`);
 }
 const V86_PROFILES = { win98: 128, winme: 128, win2000: 256, winxp: 512, vista: 1024 };
-function v86Settings() { try { return JSON.parse(localStorage.getItem('win98-run-v86')) || { profile: 'win98', ramMB: 128 }; } catch { return { profile: 'win98', ramMB: 128 }; } }
+const V86_NET_URLS = { public: 'wisps://wisp.mercurywork.shop/', local: 'wisp://127.0.0.1:12345' };
+function v86Settings() { try { return { profile: 'win98', ramMB: 128, network: 'public', ...(JSON.parse(localStorage.getItem('win98-run-v86')) || {}) }; } catch { return { profile: 'win98', ramMB: 128, network: 'public' }; } }
 function saveV86Settings(s) { localStorage.setItem('win98-run-v86', JSON.stringify(s)); }
 function openV86() {
   const cur = v86Settings();
@@ -510,6 +511,13 @@ function openV86() {
     <div class="field"><label>RAM</label>
       <select id="v86-ram" style="width:100%;padding:4px">${[64, 128, 256, 512, 1024].map(m => `<option value="${m}" ${cur.ramMB === m ? 'selected' : ''}>${m >= 1024 ? (m / 1024) + ' GB' : m + ' MB'}</option>`).join('')}</select></div>
     <p>Small images (up to ~2.8 MB) mount as a floppy; larger images as a hard disk. Optional CD image (<b>.iso</b>) can be attached after import. For Windows 2000/XP images, set the guest PC type to <b>Standard PC</b> (not ACPI) when preparing the image.</p>
+    <div class="field"><label>Network (virtual ethernet)</label>
+      <select id="v86-net" style="width:100%;padding:4px">
+        <option value="public" ${cur.network === 'public' ? 'selected' : ''}>Internet via public relay (works anywhere)</option>
+        <option value="local" ${cur.network === 'local' ? 'selected' : ''}>Internet via my own PC relay (wisp://127.0.0.1:12345)</option>
+        <option value="off" ${cur.network === 'off' ? 'selected' : ''}>Off (no network card)</option>
+      </select></div>
+    <p style="margin:4px 0">The guest gets a virtual NE2000 ethernet card with DHCP. <b>Public relay</b> routes traffic through a third-party Wisp relay — fine for browsing, but do not sign into important accounts on Windows XP. <b>My own PC relay</b> uses your own connection: run the relay in the project's <b>relay</b> folder first (<i>npm install</i>, then <i>npm start</i>), then boot.</p>
     <div class="field"><label>Blank disk size (for ISO installs)</label>
       <select id="v86-disksize" style="width:100%;padding:4px"><option value="4">4 GB</option><option value="8" selected>8 GB (recommended for XP)</option><option value="12">12 GB</option></select></div>
     <p><button class="btn98" id="v86-import">Import disk image (.img)…</button>
@@ -519,9 +527,11 @@ function openV86() {
     <p><b>Have an installer ISO</b> (like a Windows XP CD image)? Use <b>Install Windows from ISO</b>: it creates a blank virtual hard disk, boots the CD, and runs Setup. An ISO by itself is not a hard disk, so it cannot be attached until a disk exists. Do not close the window during install — disk changes are not saved yet, so an install only lasts while the window stays open.</p>
     <p>Expect a slow boot and no 3D acceleration. Sound, saving the disk back, and performance are being evaluated in this spike.</p>`, 'padded');
   createWindow({ title: 'Win98 Image (v86 spike)', icon: '▣', width: 540, height: 480, body: wrap, menu: null });
-  const profileSel = $('#v86-profile', wrap), ramSel = $('#v86-ram', wrap);
-  profileSel.onchange = () => { ramSel.value = String(V86_PROFILES[profileSel.value] || 128); saveV86Settings({ profile: profileSel.value, ramMB: Number(ramSel.value) }); };
-  ramSel.onchange = () => saveV86Settings({ profile: profileSel.value, ramMB: Number(ramSel.value) });
+  const profileSel = $('#v86-profile', wrap), ramSel = $('#v86-ram', wrap), netSel = $('#v86-net', wrap);
+  const persist = () => saveV86Settings({ profile: profileSel.value, ramMB: Number(ramSel.value), network: netSel.value });
+  profileSel.onchange = () => { ramSel.value = String(V86_PROFILES[profileSel.value] || 128); persist(); };
+  ramSel.onchange = persist;
+  netSel.onchange = persist;
   $('#v86-install', wrap).onclick = () => { pendingDiskSizeGB = Number($('#v86-disksize', wrap).value || 8); $('#install-iso-input').click(); };
   $('#v86-import', wrap).onclick = () => $('#disk-input').click();
   $('#v86-demo', wrap).onclick = () => openV86Player('v86-player.html?demo=1', 'FreeDOS (demo)');
@@ -534,6 +544,7 @@ function openV86() {
 function openV86Player(src, name) {
   const ram = v86Settings().ramMB || 128;
   if (!/[?&]ram=/.test(src)) src += (src.includes('?') ? '&' : '?') + 'ram=' + ram;
+  if (!/[?&]net=/.test(src)) src += '&net=' + (v86Settings().network || 'public');
   const wrap = div('');
   wrap.style.height = '100%';
   wrap.innerHTML = `<iframe class="dos-frame" title="${escapeHtml(name)}" src="${src}" allow="autoplay; fullscreen; gamepad; pointer-lock"></iframe>`;
