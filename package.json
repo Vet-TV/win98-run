@@ -6,5 +6,8 @@
   "description": "Windows 98-style desktop simulation for the browser. Not affiliated with Microsoft.",
   "scripts": {
     "start": "node local-server.mjs"
+  },
+  "dependencies": {
+    "@vercel/speed-insights": "^2.0.0"
   }
 }
