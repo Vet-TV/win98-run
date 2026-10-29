@@ -33,6 +33,7 @@
   <button id="btn-stop" type="button">Stop</button>
   <button id="btn-screenshot" type="button">📷 Screenshot</button>
   <button id="btn-lock" type="button">🖱 Lock Mouse</button>
+  <button id="btn-save-state" type="button">💾 Save State</button>
   <span id="keys">
     <button type="button" data-key="13">⏎ Enter</button>
     <button type="button" data-key="119">F8</button>
@@ -44,7 +45,7 @@
     <button type="button" data-key="32">Space</button>
     <button type="button" id="btn-focus">Focus keyboard</button>
   </span>
-  <span class="warn">Spike: disk changes are not saved yet</span>
+  <span class="warn">Press 💾 Save State before closing — otherwise this session is lost</span>
 </div>
 <div id="lock-badge" style="display:none; position:fixed; bottom:10px; left:50%; transform:translateX(-50%); z-index:7; padding:4px 14px; background:rgba(20,20,30,.85); color:#ffd27f; font-size:12px; border-radius:4px; pointer-events:none">Mouse &amp; keyboard captured — press <b>Right Ctrl</b> or <b>Esc</b> to release</div>
 <div id="screen_container"><div id="msg">Loading the PC emulator…</div></div>
@@ -93,8 +94,56 @@
     } catch (e) { /* canvas not readable yet */ }
   }, 500);
 
+  var stateKey = null;
+  var pendingState = null;
+  function openDb() {
+    return new Promise(function (resolve, reject) {
+      var req = indexedDB.open('win98-run-db-v1', 3);
+      req.onupgradeneeded = function () {
+        var db = req.result;
+        if (!db.objectStoreNames.contains('programs')) db.createObjectStore('programs', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('diskimages')) db.createObjectStore('diskimages', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('states')) db.createObjectStore('states', { keyPath: 'id' });
+      };
+      req.onsuccess = function () { resolve(req.result); };
+      req.onerror = function () { reject(req.error); };
+    });
+  }
+  function stateGet(key) {
+    return openDb().then(function (db) {
+      return new Promise(function (resolve) {
+        var get = db.transaction('states', 'readonly').objectStore('states').get(key);
+        get.onsuccess = function () { resolve(get.result || null); };
+        get.onerror = function () { resolve(null); };
+      });
+    }).catch(function () { return null; });
+  }
+  function statePut(rec) {
+    return openDb().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction('states', 'readwrite');
+        tx.objectStore('states').put(rec);
+        tx.oncomplete = resolve; tx.onerror = function () { reject(tx.error); };
+      });
+    });
+  }
+  async function saveMachineState() {
+    if (!emulator || !stateKey) { setStatus('Nothing to save in demo mode.'); return; }
+    try {
+      setStatus('Saving machine state — keep this window open…');
+      var buf = await emulator.save_state();
+      var blob = new Blob([buf], { type: 'application/octet-stream' });
+      await statePut({ id: stateKey, blob: blob, size: blob.size, createdAt: Date.now(), ramMB: ramMB });
+      setStatus('State saved (' + (blob.size / 1048576).toFixed(1) + ' MB) at ' + new Date().toLocaleTimeString() + '. It will resume on next boot.');
+    } catch (e) { setStatus('Save state failed: ' + (e && e.message ? e.message : 'browser storage error')); }
+  }
+  window.__win98SaveState = saveMachineState;
+  document.getElementById('btn-save-state').onclick = saveMachineState;
+  window.addEventListener('pagehide', function () { if (emulator && stateKey) { emulator.save_state().then(function (buf) { statePut({ id: stateKey, blob: new Blob([buf]), size: buf.byteLength, createdAt: Date.now(), ramMB: ramMB }); }).catch(function () {}); } });
+
   function boot(opts) {
     document.getElementById('msg')?.remove();
+    if (pendingState) opts.initial_state = { url: pendingState };
     var settings = {
       screen_container: document.getElementById('screen_container'),
       wasm_path: 'https://cdn.jsdelivr.net/npm/v86@0.5.472/build/v86.wasm',
@@ -213,7 +262,8 @@
   }
 
   if (params.get('install')) {
-    var ireq = indexedDB.open('win98-run-db-v1', 2);
+    stateKey = 'install:state';
+    var ireq = indexedDB.open('win98-run-db-v1', 3);
     ireq.onerror = function () { fail('Could not open local storage.'); };
     ireq.onsuccess = function () {
       var get = ireq.result.transaction('diskimages', 'readonly').objectStore('diskimages').get('install');
@@ -222,17 +272,22 @@
         var rec = get.result;
         if (!rec || !rec.isoBlob) { fail('No installer ISO found. Use Install Windows from ISO in the Win98 Image window first.'); return; }
         setStatus('Installer: ' + rec.isoName);
-        bootInstall(rec);
+        if (params.get('fresh')) { bootInstall(rec); return; }
+        stateGet(stateKey).then(function (st) {
+          if (st && st.blob) { pendingState = URL.createObjectURL(st.blob); setStatus('Resuming saved state from ' + new Date(st.createdAt).toLocaleString() + ' — use Boot fresh to restart the install.'); }
+          bootInstall(rec);
+        });
       };
     };
     return;
   }
 
-  var req = indexedDB.open('win98-run-db-v1', 2);
+  var req = indexedDB.open('win98-run-db-v1', 3);
   req.onupgradeneeded = function () {
     var db = req.result;
     if (!db.objectStoreNames.contains('programs')) db.createObjectStore('programs', { keyPath: 'id' });
     if (!db.objectStoreNames.contains('diskimages')) db.createObjectStore('diskimages', { keyPath: 'id' });
+    if (!db.objectStoreNames.contains('states')) db.createObjectStore('states', { keyPath: 'id' });
   };
   req.onerror = function () { fail('Could not open local storage.'); };
   req.onsuccess = function () {
@@ -245,8 +300,13 @@
       var url = URL.createObjectURL(rec.blob);
       if (rec.kind === 'fda') opts.fda = { url: url }; else opts.hda = { url: url, async: true };
       if (rec.isoBlob) opts.cdrom = { url: URL.createObjectURL(rec.isoBlob) };
+      stateKey = (params.get('img') || 'last') + ':state';
       setStatus('Booting ' + rec.name + ' (' + (rec.kind === 'fda' ? 'floppy' : 'hard disk') + (rec.isoName ? ', CD: ' + rec.isoName : '') + ')…');
-      boot(opts);
+      if (params.get('fresh')) { boot(opts); return; }
+      stateGet(stateKey).then(function (st) {
+        if (st && st.blob) { pendingState = URL.createObjectURL(st.blob); setStatus('Resuming saved state from ' + new Date(st.createdAt).toLocaleString() + ' — use Boot fresh to start from the disk image.'); }
+        boot(opts);
+      });
     };
   };
 })();

@@ -290,11 +290,12 @@ let _idb = null;
 function idbOpen() {
   if (_idb) return _idb;
   _idb = new Promise((resolve, reject) => {
-    const req = indexedDB.open(PROG_DB, 2);
+    const req = indexedDB.open(PROG_DB, 3);
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains('programs')) db.createObjectStore('programs', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('diskimages')) db.createObjectStore('diskimages', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('states')) db.createObjectStore('states', { keyPath: 'id' });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -307,6 +308,14 @@ async function diskGet(id) {
     const req = db.transaction('diskimages', 'readonly').objectStore('diskimages').get(id);
     req.onsuccess = () => resolve(req.result || null);
     req.onerror = () => reject(req.error);
+  });
+}
+async function stateDelete(key) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('states', 'readwrite');
+    tx.objectStore('states').delete(key);
+    tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
   });
 }
 async function diskPut(rec) {
@@ -523,7 +532,10 @@ function openV86() {
     <p><button class="btn98" id="v86-import">Import disk image (.img)…</button>
     <button class="btn98" id="v86-install">Install Windows from ISO…</button>
     <button class="btn98" id="v86-last">Boot last imported image</button>
+    <button class="btn98" id="v86-fresh">Boot fresh (ignore saved state)</button>
+    <button class="btn98" id="v86-delstate">Delete saved state</button>
     <button class="btn98" id="v86-demo">Boot FreeDOS demo instead</button></p>
+    <p>Saved machine states (from the player's <b>Save State</b> button) resume automatically on boot — including a Windows install in progress. <b>Boot fresh</b> ignores the saved state; <b>Delete saved state</b> throws it away.</p>
     <p><b>Have an installer ISO</b> (like a Windows XP CD image)? Use <b>Install Windows from ISO</b>: it creates a blank virtual hard disk, boots the CD, and runs Setup. An ISO by itself is not a hard disk, so it cannot be attached until a disk exists. Do not close the window during install — disk changes are not saved yet, so an install only lasts while the window stays open.</p>
     <p>Expect a slow boot and no 3D acceleration. Sound, saving the disk back, and performance are being evaluated in this spike.</p>`, 'padded');
   createWindow({ title: 'Win98 Image (v86 spike)', icon: '▣', width: 540, height: 480, body: wrap, menu: null });
@@ -539,6 +551,16 @@ function openV86() {
     const last = await diskGet('last').catch(() => null);
     if (!last) { alert('No disk image imported yet in this browser. Import one first.'); return; }
     openV86Player('v86-player.html?img=last', last.name);
+  };
+  $('#v86-fresh', wrap).onclick = async () => {
+    const last = await diskGet('last').catch(() => null);
+    if (!last) { alert('No disk image imported yet in this browser. Import one first.'); return; }
+    openV86Player('v86-player.html?img=last&fresh=1', last.name);
+  };
+  $('#v86-delstate', wrap).onclick = async () => {
+    await stateDelete('last:state').catch(() => {});
+    await stateDelete('install:state').catch(() => {});
+    alert('Saved machine states deleted. The next boot starts from the disk image itself.');
   };
 }
 function openV86Player(src, name) {

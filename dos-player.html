@@ -59,8 +59,8 @@
   if (demo) { start('https://v8.js-dos.com/bundles/digger.jsdos', 'win98-demo-digger'); return; }
   if (!id) { fail('No program was selected.'); return; }
 
-  var req = indexedDB.open('win98-run-db-v1', 1);
-  req.onupgradeneeded = function () { req.result.createObjectStore('programs', { keyPath: 'id' }); };
+  var req = indexedDB.open('win98-run-db-v1', 3);
+  req.onupgradeneeded = function () { var db = req.result; if (!db.objectStoreNames.contains('programs')) db.createObjectStore('programs', { keyPath: 'id' }); if (!db.objectStoreNames.contains('diskimages')) db.createObjectStore('diskimages', { keyPath: 'id' }); if (!db.objectStoreNames.contains('states')) db.createObjectStore('states', { keyPath: 'id' }); };
   req.onerror = function () { fail('Could not open the local program library.'); };
   req.onsuccess = function () {
     var get = req.result.transaction('programs', 'readonly').objectStore('programs').get(id);

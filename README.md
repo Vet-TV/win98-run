@@ -72,8 +72,9 @@ Windows disk image (`.img`, optionally with an `.iso` CD attached) —
 the image is stored only in your browser and never uploaded. We do not
 supply a Windows image. **Install Windows from ISO** creates a blank virtual
 hard disk (4/8/12 GB), boots an installer CD image, and runs Setup — verified
-to reach Windows XP Setup with a user-provided XP SP3 ISO. Disk changes are
-not saved yet, so keep the window open for the whole install. Small images mount as a floppy, larger ones as a
+to reach Windows XP Setup with a user-provided XP SP3 ISO. Press
+**Save State** in the player to snapshot the whole machine (disk included)
+into your browser; it resumes automatically on the next boot. Small images mount as a floppy, larger ones as a
 hard disk. Guest profiles set the RAM: Windows 98/ME 128 MB, Windows 2000
 256 MB, Windows XP 512 MB, Vista 1 GB (experimental), or pick RAM manually.
 A bundled FreeDOS floppy (see
@@ -87,8 +88,9 @@ folder that routes traffic through your own PC's connection
 Spike findings: the emulator starts in ~1s and a DOS floppy reaches its
 prompt in seconds at a smooth UI rate. Windows 98 itself is untested here
 because it needs a user-prepared image (see v86's Windows 9x guide). Known
-gaps: disk changes are not saved back yet, no 3D acceleration, sound is
-best-effort, and large images take significant browser storage.
+gaps: persistence is whole-machine save states (not a portable disk file),
+no 3D acceleration, sound is best-effort, and large images take significant
+browser storage.
 
 ## Next steps
 
