@@ -262,12 +262,24 @@ let _idb = null;
 function idbOpen() {
   if (_idb) return _idb;
   _idb = new Promise((resolve, reject) => {
-    const req = indexedDB.open(PROG_DB, 1);
-    req.onupgradeneeded = () => req.result.createObjectStore('programs', { keyPath: 'id' });
+    const req = indexedDB.open(PROG_DB, 2);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains('programs')) db.createObjectStore('programs', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('diskimages')) db.createObjectStore('diskimages', { keyPath: 'id' });
+    };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
   return _idb;
+}
+async function diskPut(rec) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('diskimages', 'readwrite');
+    tx.objectStore('diskimages').put(rec);
+    tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
+  });
 }
 async function progStore(mode, fn) {
   const db = await idbOpen();
@@ -436,18 +448,51 @@ async function openPrograms() {
   render();
 }
 
+/* ---------- v86 spike: real PC emulator for a user-provided disk image ---------- */
+let pendingDisk = null;
+function openV86() {
+  const wrap = div(`<h3 style="margin-top:0">Windows 98 disk image — v86 spike</h3>
+    <p>This runs a <b>real x86 PC emulator</b> (v86) in a window. Provide your own bootable Windows 98 hard-disk image (<b>.img</b>). We do not supply or distribute a Windows image.</p>
+    <p>Small images (up to ~2.8 MB) are mounted as a floppy; larger images as a hard disk. You can optionally attach a CD image (<b>.iso</b>) afterwards, for installers.</p>
+    <p><button class="btn98" id="v86-import">Import disk image (.img)…</button>
+    <button class="btn98" id="v86-demo">Boot FreeDOS demo instead</button></p>
+    <p>Expect a slow boot and no 3D acceleration. Sound, saving the disk back, and performance are being evaluated in this spike.</p>`, 'padded');
+  createWindow({ title: 'Win98 Image (v86 spike)', icon: '▣', width: 520, height: 360, body: wrap, menu: null });
+  $('#v86-import', wrap).onclick = () => $('#disk-input').click();
+  $('#v86-demo', wrap).onclick = () => openV86Player('v86-player.html?demo=1', 'FreeDOS (demo)');
+}
+function openV86Player(src, name) {
+  const wrap = div('');
+  wrap.style.height = '100%';
+  wrap.innerHTML = `<iframe class="dos-frame" title="${escapeHtml(name)}" src="${src}" allow="autoplay; fullscreen; gamepad"></iframe>`;
+  const win = createWindow({ title: `${name} — v86`, icon: '▣', width: 760, height: 560, body: wrap, menu: ['File', 'View', 'Help'] });
+  win.body.style.background = '#000';
+  win.el.querySelector('.statusbar span').textContent = 'v86 spike • Your image stays on this device • Close the window to stop the PC';
+}
+async function importDiskImage(file) {
+  const kind = file.size <= 2.88 * 1024 * 1024 ? 'fda' : 'hda';
+  pendingDisk = { id: 'last', blob: file, name: file.name, kind, size: file.size, addedAt: Date.now(), isoBlob: null, isoName: null };
+  await diskPut(pendingDisk);
+  if (confirm(`Disk image "${file.name}" saved (${kind === 'fda' ? 'floppy' : 'hard disk'}).\n\nAttach a CD image (.iso) too? Cancel boots without one.`)) {
+    $('#iso-input').click();
+  } else {
+    openV86Player('v86-player.html?img=last', file.name);
+  }
+}
+
 /* ---------- Desktop, Start menu, tray ---------- */
 const APPS = {
   explorer: (p) => openExplorer(p || 'My Computer'), notepad: () => openNotepad(), paint: openPaint,
   minesweeper: openMinesweeper, calculator: openCalculator, ie: openIE, display: openDisplay, system: openSystem,
-  programs: openPrograms
+  programs: openPrograms, v86: openV86
 };
 const DESKTOP_ICONS = [
   ['🖥', 'My Computer', () => openExplorer('My Computer')], ['📁', 'My Documents', () => openExplorer('My Documents')],
   ['🗑', 'Recycle Bin', () => openExplorer('Recycle Bin')], ['◎', 'Internet Explorer', openIE],
   ['▤', 'Notepad', () => openNotepad()], ['✿', 'Paint', openPaint], ['✸', 'Minesweeper', openMinesweeper],
   ['▦', 'Calculator', openCalculator], ['▤', 'Welcome.txt', () => openNotepad('Welcome.txt')],
-  ['▶', 'DOS Programs', openPrograms], ['⬇', 'Run Program…', openProgramPicker]
+  ['▶', 'DOS Programs', openPrograms], ['⬇', 'Run Program…', openProgramPicker],
+  ['💽', 'Win98 Image (v86)', openV86]
 ];
 function buildDesktop() {
   applyWallpaper();
@@ -494,6 +539,16 @@ $('#program-input').addEventListener('change', async e => {
   const f = e.target.files?.[0]; e.target.value = '';
   if (!f) return;
   try { await importProgramFile(f); } catch (err) { alert('Could not run that program:\n\n' + err.message); }
+});
+$('#disk-input').addEventListener('change', async e => {
+  const f = e.target.files?.[0]; e.target.value = '';
+  if (!f) return;
+  try { await importDiskImage(f); } catch (err) { alert('Could not load that disk image:\n\n' + err.message); }
+});
+$('#iso-input').addEventListener('change', async e => {
+  const f = e.target.files?.[0]; e.target.value = '';
+  if (pendingDisk && f) { pendingDisk.isoBlob = f; pendingDisk.isoName = f.name; try { await diskPut(pendingDisk); } catch { /* boot without saved ISO */ } }
+  if (pendingDisk) openV86Player('v86-player.html?img=last', pendingDisk.name);
 });
 $('#desktop').addEventListener('drop', e => {
   e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (!f) return;

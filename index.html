@@ -63,6 +63,7 @@
         <button data-app="minesweeper"><span class="mi">✸</span> Minesweeper</button>
         <button data-app="calculator"><span class="mi">▦</span> Calculator</button>
         <button data-app="programs"><span class="mi">▶</span> DOS Programs…</button>
+        <button data-app="v86"><span class="mi">▣</span> Win98 Image (v86)…</button>
         <button data-action="import-program"><span class="mi">⬇</span> Run Program… (import DOS)</button>
         <div class="sep"></div>
         <button data-app="display"><span class="mi">⚙</span> Display Properties</button>
@@ -88,6 +89,8 @@
   </div>
 
 <input type="file" id="program-input" accept=".zip,.jsdos,.exe,.com,.bat" class="hidden" aria-label="Import a DOS program">
+<input type="file" id="disk-input" accept=".img,.ima,.vhd,.raw" class="hidden" aria-label="Import a disk image">
+<input type="file" id="iso-input" accept=".iso" class="hidden" aria-label="Attach a CD image">
 <script src="desktop.js"></script>
 <script defer src="/_vercel/insights/script.js"></script>
 </body>

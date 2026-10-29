@@ -64,10 +64,26 @@ No build step and no dependencies. Requires Node 18+.
 - Quenq Reborn XP (quenq.com/apps/reborn-xp): persistent IndexedDB-style file
   system, themes via Display Properties, drag-and-drop file import
 
+## v86 spike (experimental)
+
+**Win98 Image (v86)** on the desktop / Start menu runs a real x86 PC emulator
+([v86](https://github.com/copy/v86)) in a window. Import your own bootable
+Windows 98 hard-disk image (`.img`, optionally with an `.iso` CD attached) —
+the image is stored only in your browser and never uploaded. We do not
+supply a Windows image. Small images mount as a floppy, larger ones as a
+hard disk (128 MB RAM). A bundled FreeDOS floppy (see
+`assets/FREEDOS-NOTICE.txt`) tests the engine.
+
+Spike findings: the emulator starts in ~1s and a DOS floppy reaches its
+prompt in seconds at a smooth UI rate. Windows 98 itself is untested here
+because it needs a user-prepared image (see v86's Windows 9x guide). Known
+gaps: disk changes are not saved back yet, no 3D acceleration, sound is
+best-effort, and large images take significant browser storage.
+
 ## Next steps
 
-- Windows programs: Boxedwine for standalone Win32 `.exe` files, then v86
-  with a user-provided Windows 98 disk image (`.img`)
+- v86: save disk changes/states back to IndexedDB, prepared-image guidance,
+  then Boxedwine for standalone Win32 `.exe` files
 - IndexedDB file system with folders, rename/delete, and file picker dialogs
 - More apps: Media Player, Solitaire, WordPad, MS-DOS Prompt, Help
 - Sounds, multiple wallpapers/themes (98SE / 2000 / ME skins on the same engine)

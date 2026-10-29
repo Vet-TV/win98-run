@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>v86 — PC Emulator Spike</title>
+<style>
+  html, body { height: 100%; margin: 0; background: #000; overflow: hidden; font-family: Tahoma, Verdana, sans-serif; }
+  #hud { position: fixed; top: 0; left: 0; right: 0; z-index: 5; display: flex; gap: 12px; align-items: center;
+    padding: 5px 10px; background: rgba(20,20,30,.92); color: #cfe3ff; font-size: 12px; }
+  #hud button { background: #2b4a77; color: #fff; border: 1px solid #6ea8ff; padding: 3px 10px; cursor: pointer; }
+  #hud .warn { color: #ffd27f; }
+  #screen_container { position: absolute; inset: 30px 0 0 0; overflow: hidden; background: #000; }
+  #screen_container canvas { display: block; margin: 0 auto; }
+  #screen_container textarea { display: none; }
+  #msg { color: #c0c0c0; padding: 52px 18px 18px; font-size: 14px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div id="hud">
+  <span id="hud-status">Loading v86…</span>
+  <span id="hud-time"></span>
+  <span id="hud-fps"></span>
+  <button id="btn-restart" type="button">Restart PC</button>
+  <button id="btn-stop" type="button">Stop</button>
+  <span class="warn">Spike: disk changes are not saved yet</span>
+</div>
+<div id="screen_container"><div id="msg">Loading the PC emulator…</div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/v86@0.5.472/build/libv86.js"></script>
+<script>
+(function () {
+  var statusEl = document.getElementById('hud-status');
+  var timeEl = document.getElementById('hud-time');
+  var fpsEl = document.getElementById('hud-fps');
+  var params = new URLSearchParams(location.search);
+  var demo = params.get('demo');
+  var t0 = performance.now();
+  var emulator = null;
+  var firstFrameMs = null;
+
+  function setStatus(t) { statusEl.textContent = t; }
+  function fail(t) { setStatus('Failed'); document.getElementById('msg').innerHTML = '<b>The PC could not start.</b><br><br>' + t; }
+  if (typeof V86 !== 'function') { fail('The v86 runtime did not load. This feature needs an internet connection.'); return; }
+
+  setInterval(function () { timeEl.textContent = 'elapsed ' + ((performance.now() - t0) / 1000).toFixed(1) + 's'; }, 250);
+
+  // Crude responsiveness probe: main-thread frames + first non-black canvas frame.
+  (function fpsLoop() {
+    var frames = 0; var start = performance.now();
+    function tick() { frames++; if (performance.now() - start >= 2000) { fpsEl.textContent = Math.round(frames / 2) + ' fps (UI)'; frames = 0; start = performance.now(); } requestAnimationFrame(tick); }
+    requestAnimationFrame(tick);
+  })();
+  setInterval(function () {
+    if (firstFrameMs !== null) return;
+    var screenText = document.querySelector('#screen_container')?.innerText || '';
+    if (screenText.trim().length > 10) { firstFrameMs = Math.round(performance.now() - t0); setStatus('Running — first screen at ' + (firstFrameMs / 1000).toFixed(1) + 's. Click the screen, then use keyboard/mouse.'); return; }
+    var cv = document.querySelector('#screen_container canvas');
+    if (!cv || !cv.width) return;
+    try {
+      var ctx = cv.getContext('2d');
+      var data = ctx.getImageData(0, 0, Math.min(cv.width, 64), Math.min(cv.height, 64)).data;
+      for (var i = 0; i < data.length; i += 4) { if (data[i] > 12 || data[i + 1] > 12 || data[i + 2] > 12) { firstFrameMs = Math.round(performance.now() - t0); setStatus('Running — first screen at ' + (firstFrameMs / 1000).toFixed(1) + 's. Click the screen, then use keyboard/mouse.'); return; } }
+    } catch (e) { /* canvas not readable yet */ }
+  }, 500);
+
+  function boot(opts) {
+    document.getElementById('msg')?.remove();
+    var settings = {
+      screen_container: document.getElementById('screen_container'),
+      wasm_path: 'https://cdn.jsdelivr.net/npm/v86@0.5.472/build/v86.wasm',
+      bios: { url: 'https://cdn.jsdelivr.net/gh/copy/v86@master/bios/seabios.bin' },
+      vga_bios: { url: 'https://cdn.jsdelivr.net/gh/copy/v86@master/bios/vgabios.bin' },
+      memory_size: 128 * 1024 * 1024,
+      vga_memory_size: 8 * 1024 * 1024,
+      autostart: true
+    };
+    Object.keys(opts).forEach(function (k) { settings[k] = opts[k]; });
+    emulator = new V86(settings);
+    emulator.add_listener('emulator-ready', function () { setStatus('Emulator ready at ' + ((performance.now() - t0) / 1000).toFixed(1) + 's — booting…'); });
+    emulator.add_listener('emulator-started', function () { setStatus('PC started at ' + ((performance.now() - t0) / 1000).toFixed(1) + 's — booting the disk…'); });
+  }
+
+  document.getElementById('btn-restart').onclick = function () { location.reload(); };
+  document.getElementById('btn-stop').onclick = function () { if (emulator) { emulator.stop(); setStatus('Stopped.'); } };
+
+  if (demo) {
+    setStatus('Loading FreeDOS floppy demo…');
+    boot({ fda: { url: 'assets/freedos722.img' } });
+    return;
+  }
+
+  var req = indexedDB.open('win98-run-db-v1', 2);
+  req.onupgradeneeded = function () {
+    var db = req.result;
+    if (!db.objectStoreNames.contains('programs')) db.createObjectStore('programs', { keyPath: 'id' });
+    if (!db.objectStoreNames.contains('diskimages')) db.createObjectStore('diskimages', { keyPath: 'id' });
+  };
+  req.onerror = function () { fail('Could not open local storage.'); };
+  req.onsuccess = function () {
+    var get = req.result.transaction('diskimages', 'readonly').objectStore('diskimages').get(params.get('img') || 'last');
+    get.onerror = function () { fail('Could not read the disk image.'); };
+    get.onsuccess = function () {
+      var rec = get.result;
+      if (!rec || !rec.blob) { fail('No disk image found. Import a Windows 98 .img from the Win98 Image (v86) window first.'); return; }
+      var opts = {};
+      var url = URL.createObjectURL(rec.blob);
+      if (rec.kind === 'fda') opts.fda = { url: url }; else opts.hda = { url: url, async: true };
+      if (rec.isoBlob) opts.cdrom = { url: URL.createObjectURL(rec.isoBlob) };
+      setStatus('Booting ' + rec.name + ' (' + (rec.kind === 'fda' ? 'floppy' : 'hard disk') + (rec.isoName ? ', CD: ' + rec.isoName : '') + ')…');
+      boot(opts);
+    };
+  };
+})();
+</script>
+</body>
+</html>

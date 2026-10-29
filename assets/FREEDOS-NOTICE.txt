@@ -1,0 +1,5 @@
+freedos722.img is a FreeDOS boot floppy image used only as a v86 engine test.
+Source: https://copy.sh/v86/images/freedos722.img (v86 project demo images).
+FreeDOS is free and open-source software distributed under the GNU GPL.
+See https://www.freedos.org/ for source and license details.
+No Microsoft software is included in this image.
