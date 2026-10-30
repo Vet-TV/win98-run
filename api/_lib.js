@@ -7,8 +7,18 @@ export const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 export const ANON_KEY = process.env.SUPABASE_ANON_KEY || SERVICE_KEY;
 export const STRIPE_KEY = process.env.STRIPE_SECRET_KEY || '';
 
+export function missingBillingVars() {
+  const missing = [];
+  if (!STRIPE_KEY) missing.push('STRIPE_SECRET_KEY');
+  if (!process.env.STRIPE_PRICE_MONTHLY) missing.push('STRIPE_PRICE_MONTHLY');
+  if (!process.env.STRIPE_PRICE_YEARLY) missing.push('STRIPE_PRICE_YEARLY');
+  if (!SUPABASE_URL) missing.push('SUPABASE_URL');
+  if (!SERVICE_KEY) missing.push('SUPABASE_SERVICE_ROLE_KEY');
+  return missing;
+}
+
 export function billingConfigured() {
-  return !!(STRIPE_KEY && process.env.STRIPE_PRICE_MONTHLY && process.env.STRIPE_PRICE_YEARLY && SUPABASE_URL && SERVICE_KEY);
+  return missingBillingVars().length === 0;
 }
 
 export function json(res, status, obj) {

@@ -1,8 +1,8 @@
-import { SITE_URL, billingConfigured, json, readJsonBody, supabaseUser, stripe, subscriptionRowForUser, upsertSubscription } from './_lib.js';
+import { SITE_URL, billingConfigured, missingBillingVars, json, readJsonBody, supabaseUser, stripe, subscriptionRowForUser, upsertSubscription } from './_lib.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return json(res, 405, { error: 'Method not allowed.' });
-  if (!billingConfigured()) return json(res, 503, { error: 'Billing is not configured yet.' });
+  if (!billingConfigured()) return json(res, 503, { error: 'Billing is not configured yet.', missing: missingBillingVars() });
   const user = await supabaseUser(req).catch(() => null);
   if (!user) return json(res, 401, { error: 'Sign in first.' });
   try {

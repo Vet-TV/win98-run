@@ -52,7 +52,12 @@ async function syncSubscription(sub, fallbackUserId) {
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return json(res, 405, { error: 'Method not allowed.' });
-  if (!WEBHOOK_SECRET || !process.env.SUPABASE_SERVICE_ROLE_KEY) return json(res, 503, { error: 'Webhook is not configured yet.' });
+  if (!WEBHOOK_SECRET || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    const missing = [];
+    if (!WEBHOOK_SECRET) missing.push('STRIPE_WEBHOOK_SECRET');
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) missing.push('SUPABASE_SERVICE_ROLE_KEY');
+    return json(res, 503, { error: 'Webhook is not configured yet.', missing });
+  }
   const raw = await readRawBody(req);
   if (!verifySignature(raw, req.headers['stripe-signature'], WEBHOOK_SECRET)) {
     return json(res, 400, { error: 'Invalid signature.' });
