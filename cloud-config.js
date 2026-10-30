@@ -7,6 +7,6 @@
 // by the Row Level Security policies in supabase/schema.sql.
 // Leave blank to disable cloud features (the site stays fully local).
 window.WIN98_CLOUD = {
-  url: '',
-  anonKey: ''
+  url: 'https://aanesouatcbvadhvrlur.supabase.co',
+  anonKey: 'sb_publishable_erq297f-fU4TGVnHB_9Vfg__Hf3NklF'
 };
