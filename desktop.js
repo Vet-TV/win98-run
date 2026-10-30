@@ -636,7 +636,7 @@ function openAccount() {
       <p id="acc-msg"></p><div id="acc-list"></div>`;
     const msg = t => { const m = $('#acc-msg', wrap); if (m) m.textContent = t; };
     $('#acc-out', wrap).onclick = async () => { await C.signOut(); render(); };
-    const up = key => async () => { try { msg('Uploading… large states can take a while.'); await C.uploadState(key); msg('Uploaded.'); render(); } catch (e) { msg(e.message); } };
+    const up = key => async () => { try { msg('Uploading… large states can take a while.'); await C.uploadState(key); await render(); msg('Uploaded.'); } catch (e) { msg(e.message); } };
     $('#up-last', wrap).onclick = up('last:state');
     $('#up-install', wrap).onclick = up('install:state');
     const list = $('#acc-list', wrap);

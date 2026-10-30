@@ -74,7 +74,7 @@
       const used = rows.filter(r => r.disk_key !== diskKey).reduce((a, r) => a + (r.size || 0), 0);
       if (used + local.blob.size > QUOTA_BYTES) throw new Error('Cloud quota (25 GB) would be exceeded. Delete a cloud state first.');
       const path = `${sess.user.id}/${diskKey}.bin`;
-      const up = await c.storage.from(BUCKET).upload(path, local.blob, { upsert: true, contentType: 'application/octet-stream' });
+      const up = await c.storage.from(BUCKET).upload(path, local.blob, { upsert: true, contentType: 'application/octet-stream', cacheControl: '0' });
       if (up.error) throw up.error;
       const disk = await storeGet('diskimages', diskKey.replace(/:state$/, ''));
       const meta = { user_id: sess.user.id, disk_key: diskKey, name: disk?.name || diskKey, size: local.blob.size, storage_path: path, updated_at: new Date().toISOString() };
@@ -84,8 +84,15 @@
     },
     async downloadState(row) {
       const c = await loadClient(); if (!c) throw new Error('Cloud is not configured yet.');
-      const { data, error } = await c.storage.from(BUCKET).download(row.storage_path);
-      if (error) throw error;
+      const sess = await api.session(); if (!sess) throw new Error('Sign in first.');
+      // Direct fetch with cache disabled: a re-uploaded state must never be
+      // served back as the previous version from the browser HTTP cache.
+      const res = await fetch(`${cfg.url}/storage/v1/object/authenticated/${BUCKET}/${row.storage_path}`, {
+        headers: { apikey: cfg.anonKey, Authorization: `Bearer ${sess.access_token}` },
+        cache: 'no-store'
+      });
+      if (!res.ok) throw new Error(`Download failed (${res.status}).`);
+      const data = await res.blob();
       await storePut('states', { id: row.disk_key, blob: data, size: data.size, createdAt: Date.now(), ramMB: 512 });
       return row.disk_key;
     },
