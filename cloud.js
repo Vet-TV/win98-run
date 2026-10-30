@@ -88,6 +88,16 @@
       if (!r.ok || !data.url) throw new Error(data.error || 'Could not start checkout.');
       return data.url;
     },
+    async relayAccess() {
+      const sess = await api.session(); if (!sess) throw new Error('Sign in first (Start → Account & Cloud).');
+      const r = await fetch('/api/relay-access', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${sess.access_token}` }
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok || !data.url) throw new Error(data.error || 'Could not authorize relay access.');
+      return data;
+    },
     async portal() {
       const sess = await api.session(); if (!sess) throw new Error('Sign in first.');
       const r = await fetch('/api/create-portal-session', {

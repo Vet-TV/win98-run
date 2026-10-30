@@ -60,9 +60,13 @@
   var demo = params.get('demo');
   var RAM_CHOICES = [64, 128, 256, 512, 1024, 2048];
   var ramMB = RAM_CHOICES.includes(Number(params.get('ram'))) ? Number(params.get('ram')) : 128;
-  var NET_MODES = { public: 'wisps://wisp.mercurywork.shop/', local: 'wisp://127.0.0.1:12345', off: null };
+  var NET_MODES = { public: 'wisps://wisp.mercurywork.shop/', local: 'wisp://127.0.0.1:12345', private: null, off: null };
   var netMode = Object.prototype.hasOwnProperty.call(NET_MODES, params.get('net')) ? params.get('net') : 'public';
   var netUrl = NET_MODES[netMode];
+  if (netMode === 'private') {
+    var relayParam = params.get('relay') || '';
+    netUrl = /^wss:\/\//.test(relayParam) ? relayParam : null; // token URL minted for Plus users
+  }
   var t0 = performance.now();
   var emulator = null;
   var firstFrameMs = null;

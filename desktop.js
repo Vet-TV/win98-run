@@ -523,10 +523,11 @@ function openV86() {
     <div class="field"><label>Network (virtual ethernet)</label>
       <select id="v86-net" style="width:100%;padding:4px">
         <option value="public" ${cur.network === 'public' ? 'selected' : ''}>Internet via public relay (works anywhere)</option>
+        <option value="private" ${cur.network === 'private' ? 'selected' : ''}>Internet via private relay (Plus)</option>
         <option value="local" ${cur.network === 'local' ? 'selected' : ''}>Internet via my own PC relay (wisp://127.0.0.1:12345)</option>
         <option value="off" ${cur.network === 'off' ? 'selected' : ''}>Off (no network card)</option>
       </select></div>
-    <p style="margin:4px 0">The guest gets a virtual NE2000 ethernet card with DHCP. <b>Public relay</b> routes traffic through a third-party Wisp relay — fine for browsing, but do not sign into important accounts on Windows XP. <b>My own PC relay</b> uses your own connection: run the relay in the project's <b>relay</b> folder first (<i>npm install</i>, then <i>npm start</i>), then boot.</p>
+    <p style="margin:4px 0">The guest gets a virtual NE2000 ethernet card with DHCP. <b>Public relay</b> routes traffic through a third-party Wisp relay — fine for browsing, but do not sign into important accounts on Windows XP. <b>Private relay</b> is our own Plus-only relay (sign in and upgrade in Account &amp; Cloud). <b>My own PC relay</b> uses your own connection: run the relay in the project's <b>relay</b> folder first (<i>npm install</i>, then <i>npm start</i>), then boot.</p>
     <div class="field"><label>Blank disk size (for ISO installs)</label>
       <select id="v86-disksize" style="width:100%;padding:4px"><option value="4">4 GB</option><option value="8" selected>8 GB (recommended for XP)</option><option value="12">12 GB</option></select></div>
     <p><button class="btn98" id="v86-import">Import disk image (.img)…</button>
@@ -563,10 +564,20 @@ function openV86() {
     alert('Saved machine states deleted. The next boot starts from the disk image itself.');
   };
 }
-function openV86Player(src, name) {
+async function openV86Player(src, name) {
   const ram = v86Settings().ramMB || 128;
   if (!/[?&]ram=/.test(src)) src += (src.includes('?') ? '&' : '?') + 'ram=' + ram;
-  if (!/[?&]net=/.test(src)) src += '&net=' + (v86Settings().network || 'public');
+  let net = v86Settings().network || 'public';
+  if (net === 'private' && !/[?&]net=/.test(src)) {
+    try {
+      const access = await window.Win98Cloud.relayAccess();
+      src += '&relay=' + encodeURIComponent(access.url);
+    } catch (e) {
+      alert((e.message || 'Private relay unavailable.') + '\n\nBooting without network this time. Choose the public relay, or sign in with Plus to use the private relay.');
+      net = 'off';
+    }
+  }
+  if (!/[?&]net=/.test(src)) src += '&net=' + net;
   const wrap = div('');
   wrap.style.height = '100%';
   wrap.innerHTML = `<iframe class="dos-frame" title="${escapeHtml(name)}" src="${src}" allow="autoplay; fullscreen; gamepad; pointer-lock"></iframe>`;

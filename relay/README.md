@@ -33,6 +33,11 @@ public Wisp relay at `wisp.mercurywork.shop`. Guests are isolated from each
 other with Wisp, but a third party carries your traffic — fine for general
 browsing, not for signing into important accounts inside Windows XP.
 
+Plus subscribers can instead choose **Internet via private relay**: our own
+hosted copy of this server at `wss://relay.win98run.app`, gated by
+short-lived signed tokens (see DEPLOY.md). Setting `RELAY_SECRET` switches
+this server into that hosted mode; without it, it stays a local-only relay.
+
 ## Notes
 
 - XP Setup: networking components install by default with DHCP. If you add
