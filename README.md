@@ -7,22 +7,32 @@
 ## What is this?
 
 win98-run is Windows 98 in your browser — a boot sequence, desktop, Start
-menu, taskbar, and working windows — with a real DOS emulator (js-dos /
-DOSBox) inside it.
+menu, taskbar, and working windows — with two real engines inside it:
 
-Bring your own DOS games and apps. Drop in a `.zip`, a `.jsdos` bundle, or a
-single DOS `.EXE`, `.COM`, or `.BAT`, and it runs in a window on the desktop.
-Your programs are stored only in your browser (IndexedDB). Nothing is
-uploaded, there is no account, and there is no server-side file storage.
+1. **A DOS emulator (js-dos / DOSBox).** Bring your own DOS games and apps:
+   drop in a `.zip`, a `.jsdos` bundle, or a single DOS `.EXE`, `.COM`, or
+   `.BAT`, and it runs in a window on the desktop.
+2. **A real x86 PC emulator (v86).** Import your own bootable Windows disk
+   image (`.img`), or install Windows from your own installer ISO onto a
+   blank virtual disk — verified to reach Windows XP Setup with a
+   user-provided XP SP3 ISO. Snapshot the whole machine with **Save State**
+   and resume exactly where you left off, even mid-install.
 
-No game library is included or distributed. A streamed Digger demo is built
-into DOS Programs so you can try the emulator instantly.
+Your files live in your browser (IndexedDB) and are never uploaded unless
+you choose to: an optional free account adds cloud sync for your saved
+machine states, and **Plus** ($6/mo or $60/yr) expands that to multiple
+states and 25 GB. The local experience is free forever, with no account.
+
+No Windows images, game library, or Microsoft software is included or
+distributed — you bring your own software, like bringing your own discs to
+a PC. A streamed Digger demo and a FreeDOS floppy are built in so you can
+try both engines instantly.
 
 ![Demo: Digger running in win98-run](assets/demo.gif)
 
-Inspired by win32.run, OpenLair XP, and Quenq's Reborn XP. This is a
-simulation with an emulator inside, not a full Windows emulator: Windows
-`.EXE` files do not run yet. Not affiliated with Microsoft.
+Inspired by win32.run, OpenLair XP, and Quenq's Reborn XP. Standalone
+Windows `.EXE` files do not run yet (DOS executables do, and full Windows
+runs inside the v86 PC from your own image). Not affiliated with Microsoft.
 
 ## Run
 
@@ -56,6 +66,14 @@ No build step and no dependencies. Requires Node 18+.
 - DOS Programs library: search, rename, export (`.jsdos` backup), delete, and
   per-program settings — DOSBox or DOSBox-X backend and CPU cycles — plus a
   fullscreen button in the player window.
+- **A real x86 PC (v86)**: import a bootable `.img`, install from your own
+  ISO, guest profiles for 98/ME/2000/XP, virtual NE2000 networking, pointer
+  lock, screenshots saved to your PC, and whole-machine Save State / resume.
+- **Optional account & cloud sync** (Supabase): sign in to back up saved
+  machine states and resume them on another browser or device.
+- **Plus** ($6/mo or $60/yr via Stripe): multiple cloud states (25 GB) and
+  the private relay. Free accounts get 1 cloud state up to 5 GB; guests and
+  local use are unlimited and free.
 
 ## Ideas borrowed from the reference sites
 
@@ -81,22 +99,24 @@ A bundled FreeDOS floppy (see
 `assets/FREEDOS-NOTICE.txt`) tests the engine.
 
 Networking: the guest can have a virtual NE2000 ethernet card (DHCP) via a
-Wisp relay — either the public relay, or a local relay in the `relay/`
-folder that routes traffic through your own PC's connection
-(`cd relay; npm install; npm start`, then choose "my own PC relay").
+Wisp relay — the public relay, our hosted private relay for Plus users
+(gated by short-lived signed tokens, see `relay/DEPLOY.md`), or a local
+relay in the `relay/` folder that routes traffic through your own PC's
+connection (`cd relay; npm install; npm start`, then choose
+"my own PC relay").
 
-Spike findings: the emulator starts in ~1s and a DOS floppy reaches its
-prompt in seconds at a smooth UI rate. Windows 98 itself is untested here
-because it needs a user-prepared image (see v86's Windows 9x guide). Known
-gaps: persistence is whole-machine save states (not a portable disk file),
-no 3D acceleration, sound is best-effort, and large images take significant
-browser storage.
+Findings: the emulator starts in ~1s and a DOS floppy reaches its prompt in
+seconds at a smooth UI rate. Whole-machine save states (IndexedDB locally,
+optional cloud sync) resume even mid-install. Windows 98 itself is untested
+here because it needs a user-prepared image (see v86's Windows 9x guide).
+Known gaps: no 3D acceleration, sound is best-effort, XP is slow (it is a
+Pentium-era PC in JavaScript), and large images take significant browser
+storage.
 
 ## Next steps
 
-- v86: save disk changes/states back to IndexedDB, prepared-image guidance,
-  then Boxedwine for standalone Win32 `.exe` files
-- IndexedDB file system with folders, rename/delete, and file picker dialogs
+- Private relay hosting rollout (code shipped; server provisioning next)
+- Boxedwine for standalone Win32 `.exe` files
 - More apps: Media Player, Solitaire, WordPad, MS-DOS Prompt, Help
 - Sounds, multiple wallpapers/themes (98SE / 2000 / ME skins on the same engine)
 - Mobile touch layout
