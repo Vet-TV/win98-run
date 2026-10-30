@@ -4,7 +4,9 @@
 (function () {
   const cfg = window.WIN98_CLOUD || {};
   const BUCKET = 'vm-states';
-  const QUOTA_BYTES = 25 * 1024 * 1024 * 1024;
+  const QUOTA_BYTES = 25 * 1024 * 1024 * 1024;        // Plus
+  const FREE_QUOTA_BYTES = 5 * 1024 * 1024 * 1024;    // Free: 1 state, up to 5 GB
+  const FREE_MAX_STATES = 1;
   let client = null;
   let loadPromise = null;
 
@@ -55,10 +57,47 @@
   const api = {
     enabled: !!(cfg.url && cfg.anonKey),
     quotaBytes: QUOTA_BYTES,
+    freeQuotaBytes: FREE_QUOTA_BYTES,
+    freeMaxStates: FREE_MAX_STATES,
     async session() { const c = await loadClient(); if (!c) return null; const { data } = await c.auth.getSession(); return data.session; },
     async signUp(email, password) { const c = await loadClient(); if (!c) throw new Error('Cloud is not configured yet.'); const { data, error } = await c.auth.signUp({ email, password }); if (error) throw error; return data; },
     async signIn(email, password) { const c = await loadClient(); if (!c) throw new Error('Cloud is not configured yet.'); const { data, error } = await c.auth.signInWithPassword({ email, password }); if (error) throw error; return data; },
     async signOut() { const c = await loadClient(); if (c) await c.auth.signOut(); },
+    async mySubscription() {
+      const c = await loadClient(); if (!c) return null;
+      try {
+        const { data, error } = await c.from('subscriptions').select('*').maybeSingle();
+        if (error) return null; // table not created yet -> Free
+        return data || null;
+      } catch { return null; }
+    },
+    async plan() {
+      const sub = await api.mySubscription();
+      const live = !!sub && (sub.status === 'active' || sub.status === 'trialing') &&
+        (!sub.current_period_end || new Date(sub.current_period_end).getTime() > Date.now());
+      return { plus: live, sub };
+    },
+    async checkout(interval) {
+      const sess = await api.session(); if (!sess) throw new Error('Sign in first.');
+      const r = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sess.access_token}` },
+        body: JSON.stringify({ interval: interval === 'year' ? 'year' : 'month' })
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok || !data.url) throw new Error(data.error || 'Could not start checkout.');
+      return data.url;
+    },
+    async portal() {
+      const sess = await api.session(); if (!sess) throw new Error('Sign in first.');
+      const r = await fetch('/api/create-portal-session', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${sess.access_token}` }
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok || !data.url) throw new Error(data.error || 'Could not open billing portal.');
+      return data.url;
+    },
     async listStates() {
       const c = await loadClient(); if (!c) return [];
       const { data, error } = await c.from('cloud_states').select('*').order('updated_at', { ascending: false });
@@ -71,8 +110,18 @@
       const local = await storeGet('states', diskKey);
       if (!local || !local.blob) throw new Error('No local saved state for this disk yet. Boot the VM and press Save State first.');
       const rows = await api.listStates();
+      const { plus } = await api.plan();
+      const replacing = rows.some(r => r.disk_key === diskKey);
+      if (!plus && !replacing && rows.length >= FREE_MAX_STATES) {
+        throw new Error('Free plan includes 1 cloud state. Delete it or upgrade to Plus for multiple states and 25 GB.');
+      }
+      const limit = plus ? QUOTA_BYTES : FREE_QUOTA_BYTES;
       const used = rows.filter(r => r.disk_key !== diskKey).reduce((a, r) => a + (r.size || 0), 0);
-      if (used + local.blob.size > QUOTA_BYTES) throw new Error('Cloud quota (25 GB) would be exceeded. Delete a cloud state first.');
+      if (used + local.blob.size > limit) {
+        throw new Error(plus
+          ? 'Cloud quota (25 GB) would be exceeded. Delete a cloud state first.'
+          : `Free plan includes up to 5 GB of cloud storage. This state is ${(local.blob.size / 1073741824).toFixed(2)} GB — upgrade to Plus for 25 GB.`);
+      }
       const path = `${sess.user.id}/${diskKey}.bin`;
       const up = await c.storage.from(BUCKET).upload(path, local.blob, { upsert: true, contentType: 'application/octet-stream', cacheControl: '0' });
       if (up.error) throw up.error;

@@ -628,14 +628,26 @@ function openAccount() {
     let rows = [];
     try { rows = await C.listStates(); } catch (e) { /* show below */ }
     const used = rows.reduce((a, r) => a + (r.size || 0), 0);
+    const plan = await C.plan().catch(() => ({ plus: false, sub: null }));
+    const limitGB = plan.plus ? 25 : 5;
+    const planHtml = plan.plus
+      ? `<p><b>Plus</b> (${escapeHtml(plan.sub?.interval === 'year' ? 'yearly' : 'monthly')})${plan.sub?.current_period_end ? ` · current period ends ${new Date(plan.sub.current_period_end).toLocaleDateString()}` : ''} &nbsp;<button class="btn98" id="acc-portal">Manage Billing</button></p>`
+      : `<p><b>Free plan</b> — 1 cloud state, up to 5 GB. <b>Plus</b> gives you multiple states and 25 GB.<br>
+         <button class="btn98" id="acc-plus-m">Upgrade — $6/month</button>
+         <button class="btn98" id="acc-plus-y">Upgrade — $60/year</button></p>`;
     wrap.innerHTML = `<h3 style="margin-top:0">Signed in</h3>
       <p>${escapeHtml(sess.user.email || '')} &nbsp;<button class="btn98" id="acc-out">Sign Out</button></p>
-      <p>Cloud usage: ${(used / 1073741824).toFixed(2)} GB of 25 GB</p>
+      ${planHtml}
+      <p>Cloud usage: ${(used / 1073741824).toFixed(2)} GB of ${limitGB} GB</p>
       <p><button class="btn98" id="up-last">Upload saved state (last disk)</button>
       <button class="btn98" id="up-install">Upload install state</button></p>
       <p id="acc-msg"></p><div id="acc-list"></div>`;
     const msg = t => { const m = $('#acc-msg', wrap); if (m) m.textContent = t; };
     $('#acc-out', wrap).onclick = async () => { await C.signOut(); render(); };
+    const goBilling = fn => async () => { try { msg('Opening secure Stripe page…'); location.href = await fn(); } catch (e) { msg(e.message); } };
+    if ($('#acc-portal', wrap)) $('#acc-portal', wrap).onclick = goBilling(() => C.portal());
+    if ($('#acc-plus-m', wrap)) $('#acc-plus-m', wrap).onclick = goBilling(() => C.checkout('month'));
+    if ($('#acc-plus-y', wrap)) $('#acc-plus-y', wrap).onclick = goBilling(() => C.checkout('year'));
     const up = key => async () => { try { msg('Uploading… large states can take a while.'); await C.uploadState(key); await render(); msg('Uploaded.'); } catch (e) { msg(e.message); } };
     $('#up-last', wrap).onclick = up('last:state');
     $('#up-install', wrap).onclick = up('install:state');
@@ -760,6 +772,14 @@ function enterDesktop() {
   $('#boot').classList.add('hidden'); $('#desktop').classList.remove('hidden');
   if (settings.wallpaperImage) $('#desktop').style.background = `url(${settings.wallpaperImage}) center/cover`;
   buildDesktop(); tickClock();
+  const billing = new URLSearchParams(location.search).get('billing');
+  if (billing) {
+    history.replaceState(null, '', location.pathname);
+    setTimeout(() => {
+      openAccount();
+      if (billing === 'success') setTimeout(() => alert('Thanks! Your Plus subscription is being activated — if it still shows Free, wait a few seconds and reopen Account & Cloud.'), 600);
+    }, 400);
+  }
 }
 $('#boot').addEventListener('click', enterDesktop);
 runBoot();
